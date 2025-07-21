@@ -1,4 +1,4 @@
-use crate::{commands::*, list::*, InputController};
+use crate::{commands::*, input::InputAction, list::*, InputController};
 
 use crossterm::event::KeyEvent;
 use ratatui::{
@@ -248,13 +248,13 @@ impl Board {
         None
     }
 
-    pub fn process_input_for_title(&mut self, key: KeyEvent) -> bool {
+    pub fn process_input_for_title(&mut self, key: KeyEvent) -> InputAction {
         let width = self.lists[self.current_list.unwrap()].width;
         self.input_controller
             .input(&mut self.lists[self.current_list.unwrap()], key, width)
     }
 
-    pub fn process_input_for_item(&mut self, key: KeyEvent) -> bool {
+    pub fn process_input_for_item(&mut self, key: KeyEvent) -> InputAction {
         let width = self.lists[self.current_list.unwrap()].width;
         let item = self.lists[self.current_list.unwrap()]
             .selected_item_index

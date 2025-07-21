@@ -36,8 +36,20 @@ pub struct InputController {
     pub character_index: usize,
 }
 
+#[derive(PartialEq)]
+pub enum InputAction {
+    Continue,
+    Done,
+    NewItem,
+}
+
 impl InputController {
-    pub fn input<T: Editable>(&mut self, editable: &mut T, key: KeyEvent, width: u16) -> bool {
+    pub fn input<T: Editable>(
+        &mut self,
+        editable: &mut T,
+        key: KeyEvent,
+        width: u16,
+    ) -> InputAction {
         if key.modifiers == KeyModifiers::CONTROL {
             match key.code {
                 KeyCode::Left => self.move_cursor_word_left(editable),
@@ -55,12 +67,15 @@ impl InputController {
                 KeyCode::Home => self.move_cursor_to_start(editable),
                 KeyCode::End => self.move_cursor_to_end(editable),
                 KeyCode::Esc => {
-                    return false;
+                    return InputAction::Done;
+                }
+                KeyCode::Enter => {
+                    return InputAction::NewItem;
                 }
                 _ => {}
             };
         }
-        true
+        InputAction::Continue
     }
     fn move_cursor_left<T: Editable>(&mut self, editable: &T) {
         let cursor_moved_left = self.character_index.saturating_sub(1);
@@ -335,7 +350,7 @@ mod tests {
         };
 
         let continue_processing = controller.input(&mut editable, KeyEvent::from(KeyCode::Esc), 80);
-        assert!(!continue_processing);
+        assert!(continue_processing == InputAction::Done);
     }
 
     #[test]
