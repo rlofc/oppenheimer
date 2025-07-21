@@ -50,6 +50,8 @@ impl InputController {
                 KeyCode::Backspace => self.delete_char(editable, width),
                 KeyCode::Left => self.move_cursor_left(editable),
                 KeyCode::Right => self.move_cursor_right(editable),
+                KeyCode::Down => self.move_cursor_down(editable, width),
+                KeyCode::Up => self.move_cursor_up(editable, width),
                 KeyCode::Home => self.move_cursor_to_start(editable),
                 KeyCode::End => self.move_cursor_to_end(editable),
                 KeyCode::Esc => {
@@ -68,6 +70,103 @@ impl InputController {
     fn move_cursor_right<T: Editable>(&mut self, editable: &T) {
         let cursor_moved_right = self.character_index.saturating_add(1);
         self.character_index = self.clamp_cursor(editable, cursor_moved_right);
+    }
+
+    fn get_positioning_data<T: Editable>(
+        &mut self,
+        editable: &T,
+        width: u16,
+    ) -> (String, usize, usize, usize, usize, usize) {
+        let wrapped_text = editable.wrapped(width);
+        let mut line = 1;
+        let mut index_in_line = 0;
+        for i in 0..self.character_index {
+            (line, index_in_line) = if wrapped_text.chars().nth(i).unwrap_or('\0') == '\n' {
+                (line + 1, 0)
+            } else {
+                (line, index_in_line + 1)
+            };
+        }
+        let current_line = line;
+        let current_index_in_line = index_in_line;
+        let last_i = self.character_index;
+        (
+            wrapped_text,
+            last_i,
+            line,
+            index_in_line,
+            current_line,
+            current_index_in_line,
+        )
+    }
+
+    fn move_cursor_down<T: Editable>(&mut self, editable: &T, width: u16) {
+        let (
+            wrapped_text,
+            mut last_i,
+            mut line,
+            mut index_in_line,
+            current_line,
+            current_index_in_line,
+        ) = self.get_positioning_data(editable, width);
+
+        let mut resolved_index: Option<usize> = None;
+        for i in self.character_index..wrapped_text.len() {
+            last_i = i;
+            (line, index_in_line) = if wrapped_text.chars().nth(i).unwrap_or('\0') == '\n' {
+                (line + 1, 0)
+            } else {
+                (line, index_in_line + 1)
+            };
+            if line == current_line + 2 {
+                last_i = i - 1;
+                break;
+            }
+            if line == current_line + 1 && index_in_line == current_index_in_line {
+                resolved_index = Some(i + 1);
+                break;
+            }
+        }
+
+        self.character_index = self.clamp_cursor(editable, resolved_index.unwrap_or(last_i));
+    }
+
+    fn move_cursor_up<T: Editable>(&mut self, editable: &T, width: u16) {
+        let (
+            wrapped_text,
+            mut last_i,
+            mut line,
+            mut index_in_line,
+            current_line,
+            current_index_in_line,
+        ) = self.get_positioning_data(editable, width);
+        let x = wrapped_text
+            .split("\n")
+            .map(|line| line.to_string())
+            .collect::<Vec<String>>();
+        let mut resolved_index: Option<usize> = None;
+        for i in (0..self.character_index).rev() {
+            (line, index_in_line) = if wrapped_text.chars().nth(i).unwrap_or('\0') == '\n' {
+                (line - 1, x[line - 2].len() - 1)
+            } else {
+                (line, index_in_line - 1)
+            };
+            if line == current_line - 2 {
+                line += 1;
+                last_i = i + x[line - 1].len();
+                break;
+            }
+            if i == 0 {
+                last_i = i + x[line - 1].len() - 1;
+                break;
+            }
+            if line < current_line && index_in_line == current_index_in_line {
+                resolved_index = Some(i - 1);
+                break;
+            }
+        }
+
+        self.character_index = self.clamp_cursor(editable, resolved_index.unwrap_or(last_i));
     }
 
     fn move_cursor_word_left<T: Editable>(&mut self, editable: &T) {
