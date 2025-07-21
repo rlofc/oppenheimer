@@ -1,6 +1,6 @@
 # OPPENHEIMER
 
-## Earn you reputation, one task at a time
+## Earn your reputation, one task at a time
 
 ![OPPENHEIMER](screenshot.png)
 
