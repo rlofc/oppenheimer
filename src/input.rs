@@ -172,7 +172,11 @@ impl InputController {
                 break;
             }
             if i == 0 {
-                last_i = i + x[line - 1].len() - 1;
+                if current_line == 1 {
+                    last_i = 0;
+                } else {
+                    last_i = i + x[line - 1].len() - 1;
+                }
                 break;
             }
             if line < current_line && index_in_line == current_index_in_line {
@@ -340,6 +344,40 @@ mod tests {
 
         controller.input(&mut editable, KeyEvent::from(KeyCode::Right), 80);
         assert_eq!(controller.character_index, 3); // Cannot move right anymore
+    }
+
+    #[test]
+    fn test_move_cursor_up_and_down() {
+        let mut controller = InputController::default();
+        let mut editable = MockEditable {
+            text: String::from("This is a wrapped\ntext\nwith three lines"),
+        };
+
+        controller.input(&mut editable, KeyEvent::from(KeyCode::Right), 80);
+        controller.input(&mut editable, KeyEvent::from(KeyCode::Right), 80);
+        controller.input(&mut editable, KeyEvent::from(KeyCode::Right), 80);
+        controller.input(&mut editable, KeyEvent::from(KeyCode::Right), 80);
+        controller.input(&mut editable, KeyEvent::from(KeyCode::Right), 80);
+        controller.input(&mut editable, KeyEvent::from(KeyCode::Down), 80);
+        assert_eq!(controller.character_index, 21);
+
+        controller.input(&mut editable, KeyEvent::from(KeyCode::Down), 80);
+        assert_eq!(controller.character_index, 26);
+
+        controller.input(&mut editable, KeyEvent::from(KeyCode::Right), 80);
+        controller.input(&mut editable, KeyEvent::from(KeyCode::Right), 80);
+        controller.input(&mut editable, KeyEvent::from(KeyCode::Right), 80);
+        controller.input(&mut editable, KeyEvent::from(KeyCode::Up), 80);
+        assert_eq!(controller.character_index, 21);
+
+        controller.input(&mut editable, KeyEvent::from(KeyCode::Down), 80);
+        controller.input(&mut editable, KeyEvent::from(KeyCode::Down), 80);
+        assert_eq!(controller.character_index, editable.text.len() - 1);
+
+        controller.input(&mut editable, KeyEvent::from(KeyCode::Up), 80);
+        controller.input(&mut editable, KeyEvent::from(KeyCode::Up), 80);
+        controller.input(&mut editable, KeyEvent::from(KeyCode::Up), 80);
+        assert_eq!(controller.character_index, 0);
     }
 
     #[test]
