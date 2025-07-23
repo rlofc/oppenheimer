@@ -212,20 +212,11 @@ impl App {
                     InputMode::EditTitle => {
                         match self.active_board_mut().process_input_for_title(key) {
                             InputAction::Done => {
-                                let mut c = self.staged.take().unwrap();
-                                if c.finalize(self.active_board_mut()) {
-                                    self.undo.push_front(BoardCommand::new(
-                                        self.active_board_index(),
-                                        c.to_cmd(),
-                                    ));
-                                    self.save_board();
-                                    self.redo.clear();
-                                } else {
-                                    c.revert(self.active_board_mut());
-                                }
+                                self.commit_board_command();
                                 self.input_mode = InputMode::Normal;
                             }
                             InputAction::NewItem => {
+                                self.commit_board_command();
                                 self.insert_item_to_current_list();
                             }
                             _ => (),
@@ -234,20 +225,11 @@ impl App {
                     InputMode::EditItem => {
                         match self.active_board_mut().process_input_for_item(key) {
                             InputAction::Done => {
-                                let mut c = self.staged.take().unwrap();
-                                if c.finalize(self.active_board_mut()) {
-                                    self.undo.push_front(BoardCommand::new(
-                                        self.active_board_index(),
-                                        c.to_cmd(),
-                                    ));
-                                    self.save_board();
-                                    self.redo.clear();
-                                } else {
-                                    c.revert(self.active_board_mut());
-                                }
+                                self.commit_board_command();
                                 self.input_mode = InputMode::Normal;
                             }
                             InputAction::NewItem => {
+                                self.commit_board_command();
                                 self.insert_item_to_current_list();
                             }
                             _ => (),
@@ -255,6 +237,18 @@ impl App {
                     }
                 }
             }
+        }
+    }
+
+    fn commit_board_command(&mut self) {
+        let mut c = self.staged.take().unwrap();
+        if c.finalize(self.active_board_mut()) {
+            self.undo
+                .push_front(BoardCommand::new(self.active_board_index(), c.to_cmd()));
+            self.save_board();
+            self.redo.clear();
+        } else {
+            c.revert(self.active_board_mut());
         }
     }
 
