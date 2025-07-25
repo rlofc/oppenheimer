@@ -1,5 +1,23 @@
 use crate::{board::Board, BoardItem, BoardList};
 
+#[derive(Clone)]
+pub struct SelectionBookmark {
+    pub list: Option<usize>,
+    pub item: Option<usize>,
+}
+
+impl SelectionBookmark {
+    pub fn select(&self, board: &mut Board) {
+        if let Some(list) = self.list {
+            board.current_list = Some(list);
+            if let Some(item) = self.item {
+                board.lists[list].selected_item_index = Some(item);
+                board.lists[list].set_selection();
+            }
+        }
+    }
+}
+
 pub trait Command {
     fn apply(&mut self, board: &mut Board);
     fn revert(&mut self, board: &mut Board);
@@ -16,6 +34,7 @@ pub struct ChangeTextCommand {
     pub item: usize,
     pub old: String,
     pub new: String,
+    pub bookmark: SelectionBookmark,
 }
 
 impl Command for ChangeTextCommand {
@@ -24,6 +43,7 @@ impl Command for ChangeTextCommand {
     }
     fn revert(&mut self, board: &mut Board) {
         board.lists[self.list].items[self.item].text = self.old.clone();
+        self.bookmark.select(board);
     }
 }
 
@@ -41,6 +61,7 @@ impl StagedCommand for ChangeTextCommand {
 pub struct AddListCommand {
     pub list: usize,
     pub title: String,
+    pub bookmark: SelectionBookmark,
 }
 
 impl Command for AddListCommand {
@@ -56,12 +77,14 @@ impl Command for AddListCommand {
     fn revert(&mut self, board: &mut Board) {
         board.lists.remove(self.list);
         board.current_list = None;
+        self.bookmark.select(board);
     }
 }
 
 pub struct DeleteListCommand {
     pub list: usize,
     pub value: BoardList,
+    pub bookmark: SelectionBookmark,
 }
 
 impl Command for DeleteListCommand {
@@ -75,6 +98,7 @@ impl Command for DeleteListCommand {
             current_list.clear_selection();
         }
         board.current_list = Some(self.list);
+        self.bookmark.select(board);
     }
 }
 
@@ -93,6 +117,7 @@ pub struct AddItemCommand {
     pub list: usize,
     pub item: usize,
     pub value: BoardItem,
+    pub bookmark: SelectionBookmark,
 }
 
 impl Command for AddItemCommand {
@@ -103,8 +128,8 @@ impl Command for AddItemCommand {
     }
     fn revert(&mut self, board: &mut Board) {
         board.lists[self.list].items.remove(self.item);
-        board.lists[self.list].set_selection_index(self.item - 1);
-        board.lists[self.list].set_selection();
+        board.lists[self.list].selected_item_index = None;
+        self.bookmark.select(board);
     }
 }
 
@@ -122,26 +147,27 @@ pub struct DeleteItemCommand {
     pub list: usize,
     pub item: usize,
     pub value: BoardItem,
+    pub bookmark: SelectionBookmark,
 }
 
 impl Command for DeleteItemCommand {
     fn apply(&mut self, board: &mut Board) {
         self.value = board.lists[self.list].items.remove(self.item);
-        board.lists[self.list].set_selection_index(self.item - 1);
+        board.lists[self.list].set_selection_index(self.item.saturating_sub(1));
         board.lists[self.list].set_selection();
     }
     fn revert(&mut self, board: &mut Board) {
         board.lists[self.list]
             .items
             .insert(self.item, self.value.clone());
-        board.lists[self.list].set_selection_index(self.item);
-        board.lists[self.list].set_selection();
+        self.bookmark.select(board);
     }
 }
 
 pub struct ShuffleListCommand {
     pub from_index: usize,
     pub to_index: usize,
+    pub bookmark: SelectionBookmark,
 }
 
 impl Command for ShuffleListCommand {
@@ -151,7 +177,7 @@ impl Command for ShuffleListCommand {
     }
     fn revert(&mut self, board: &mut Board) {
         board.lists.swap(self.to_index, self.from_index);
-        board.current_list = Some(self.from_index);
+        self.bookmark.select(board);
     }
 }
 
@@ -159,6 +185,7 @@ pub struct ShuffleItemCommand {
     pub list: usize,
     pub from_index: usize,
     pub to_index: usize,
+    pub bookmark: SelectionBookmark,
 }
 
 impl Command for ShuffleItemCommand {
@@ -171,8 +198,7 @@ impl Command for ShuffleItemCommand {
     fn revert(&mut self, board: &mut Board) {
         let current_list = &mut board.lists[self.list];
         current_list.items.swap(self.to_index, self.from_index);
-        current_list.set_selection_index(self.from_index);
-        current_list.set_selection();
+        self.bookmark.select(board);
     }
 }
 
@@ -181,6 +207,7 @@ pub struct MoveItemCommand {
     pub from_index: usize,
     pub to_list: usize,
     pub to_index: usize,
+    pub bookmark: SelectionBookmark,
 }
 
 impl Command for MoveItemCommand {
@@ -195,7 +222,7 @@ impl Command for MoveItemCommand {
                 current_list.set_selection_index(self.to_index);
             } else {
                 current_list.items.push(item);
-                current_list.set_selection_index(current_list.items.len() - 1);
+                current_list.set_selection_index(current_list.items.len().saturating_sub(1));
             }
             self.to_index = current_list.selected_item_index.unwrap();
             current_list.set_selection();
@@ -208,8 +235,7 @@ impl Command for MoveItemCommand {
             board.current_list = Some(self.from_list);
             let current_list = &mut board.lists[self.from_list];
             current_list.items.insert(self.from_index, item);
-            current_list.set_selection_index(self.from_index);
-            current_list.set_selection();
         }
+        self.bookmark.select(board);
     }
 }

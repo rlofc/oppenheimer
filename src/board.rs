@@ -65,6 +65,16 @@ impl Board {
             .collect()
     }
 
+    pub fn get_selection_bookmark(&self) -> SelectionBookmark {
+        let list = self.current_list;
+        let item = list.and_then(|l| self.lists[l].selected_item_index);
+
+        SelectionBookmark {
+            list,
+            item: item.filter(|&i| i > 0),
+        }
+    }
+
     pub fn get_current_selection_index(&self) -> usize {
         self.lists[self.current_list.unwrap()]
             .selected_item_index
@@ -96,6 +106,7 @@ impl Board {
                         list: current_list_index,
                         from_index: selected_item_index,
                         to_index: selected_item_index - 1,
+                        bookmark: self.get_selection_bookmark(),
                     };
                     return Some(Box::new(cmd));
                 }
@@ -113,6 +124,7 @@ impl Board {
                         list: current_list_index,
                         from_index: selected_item_index,
                         to_index: selected_item_index + 1,
+                        bookmark: self.get_selection_bookmark(),
                     };
                     return Some(Box::new(cmd));
                 }
@@ -131,6 +143,7 @@ impl Board {
                         to_list: current_list_index - 1,
                         from_index: selected_item_index,
                         to_index: index,
+                        bookmark: self.get_selection_bookmark(),
                     };
                     return Some(Box::new(cmd));
                 }
@@ -149,6 +162,7 @@ impl Board {
                         to_list: current_list_index + 1,
                         from_index: selected_item_index,
                         to_index: target_index,
+                        bookmark: self.get_selection_bookmark(),
                     };
                     return Some(Box::new(cmd));
                 }
@@ -160,7 +174,11 @@ impl Board {
     pub fn insert_item_to_current_list(&mut self) -> Option<Box<dyn StagedCommand>> {
         self.current_list.map(|current_list| {
             let list = &mut self.lists[current_list];
-            let pos = list.selected_item_index.map_or(0, |index| index + 1);
+            let pos = if let Some(index) = list.selected_item_index {
+                (index + 1).min(list.items.len())
+            } else {
+                0
+            };
             list.selected_item_index = Some(pos);
             list.items.insert(pos, BoardItem::default());
             list.state.borrow_mut().select_next();
@@ -168,6 +186,7 @@ impl Board {
                 list: current_list,
                 item: pos,
                 value: BoardItem::new(""),
+                bookmark: self.get_selection_bookmark(),
             }) as Box<dyn StagedCommand>
         })
     }
@@ -179,6 +198,7 @@ impl Board {
                     list: current_list,
                     item: pos,
                     value: BoardItem::new(""),
+                    bookmark: self.get_selection_bookmark(),
                 }) as Box<dyn Command>
             })
         })
@@ -196,6 +216,7 @@ impl Board {
         Some(Box::new(AddListCommand {
             list: pos,
             title: String::new(),
+            bookmark: self.get_selection_bookmark(),
         }))
     }
 
@@ -204,6 +225,7 @@ impl Board {
             Box::new(DeleteListCommand {
                 list: current_list,
                 value: BoardList::default(),
+                bookmark: self.get_selection_bookmark(),
             }) as Box<dyn Command>
         })
     }
@@ -214,6 +236,7 @@ impl Board {
                 let cmd = ShuffleListCommand {
                     from_index: current_list,
                     to_index: current_list - 1,
+                    bookmark: self.get_selection_bookmark(),
                 };
                 return Some(Box::new(cmd));
             }
@@ -227,6 +250,7 @@ impl Board {
                 let cmd = ShuffleListCommand {
                     from_index: current_list,
                     to_index: current_list + 1,
+                    bookmark: self.get_selection_bookmark(),
                 };
                 return Some(Box::new(cmd));
             }
@@ -242,6 +266,7 @@ impl Board {
                     item,
                     old: self.current_raw_item_text().clone(),
                     new: self.current_raw_item_text().clone(),
+                    bookmark: self.get_selection_bookmark(),
                 }));
             }
         }
