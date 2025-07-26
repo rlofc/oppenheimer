@@ -412,10 +412,9 @@ impl App {
 
     fn undo(&mut self) {
         if let Some(mut board_command) = self.undo.pop_front() {
-            self.active_board_mut()
-                .current_list_mut()
-                .unwrap()
-                .clear_selection();
+            if let Some(list) = self.active_board_mut().current_list_mut() {
+                list.clear_selection();
+            }
             if board_command.board_index != self.active_board_index() {
                 self.board_path.push_front(BoardReference {
                     board: board_command.board_index,
@@ -434,6 +433,9 @@ impl App {
 
     fn redo(&mut self) {
         if let Some(mut board_command) = self.redo.pop_front() {
+            if let Some(list) = self.active_board_mut().current_list_mut() {
+                list.clear_selection();
+            }
             if board_command.board_index != self.active_board_index() {
                 self.board_path.push_front(BoardReference {
                     board: board_command.board_index,

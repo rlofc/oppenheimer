@@ -69,10 +69,7 @@ impl Board {
         let list = self.current_list;
         let item = list.and_then(|l| self.lists[l].selected_item_index);
 
-        SelectionBookmark {
-            list,
-            item: item.filter(|&i| i > 0),
-        }
+        SelectionBookmark { list, item }
     }
 
     pub fn get_current_selection_index(&self) -> usize {
