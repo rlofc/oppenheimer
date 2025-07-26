@@ -2,7 +2,7 @@
 name = "oppenheimer"
 authors = ["Ithai Levi"]
 description = "Hierarchical listboards for your terminal"
-version = "0.2.3"
+version = "0.3.0"
 edition = "2021"
 repository = "https://github.com/rlofc/oppenheimer"
 license-file = "./LICENSE"
@@ -13,3 +13,9 @@ crossterm = "0.28.1"
 markdown = "=1.0.0-alpha.22"
 ratatui = "0.29.0"
 textwrap = "0.16.1"
+
+[profile.release-minified]
+inherits = "release"
+strip = true
+opt-level= "z"
+lto = true
