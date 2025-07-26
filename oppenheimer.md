@@ -1,20 +1,23 @@
 # Project Name
 ## BACKLOG
-- [ ] Support searching items, filtering and showing only matching results #search
-- [ ] Allow changing the view to a pivot board using tags #as lists
-- [ ] Provide a keyboard shortcuts #help window
-- [ ] Show the current #sub-board item name in the #status-bar - possibly with breadcrumbs to other parent boards
 - [ ] Show board statistics in the #status-bar (number of items, checked items, etc)
 - [ ] Allow detailing items with a #description and possibly other metadata
+- [ ] Allow changing the view to a pivot board using #tags-as-lists
+- [ ] Allow user #configuration (to be further defined)
+- [ ] Automate building and publishing #automation
 ## STAGED
-- [ ] Allow #deleting the selected item from a list
-- [ ] Allo #deleting the current list from a board
+- [ ] Show the current #sub-board item name in the #status-bar - possibly with breadcrumbs to other parent boards
 ## IN-PROGRESS
-- [ ] Load and save boards and lists using #markdown
-- [ ] Create a new #sub-board from any selected item
-- [ ] Navigate to a #sub-board from any selected item
+- [ ] Provide a keyboard shortcuts #help window
+- [ ] Support searching items, filtering and showing only matching results #search
 - [ ] Provide standard #text-editing behavior for items, including cursor movement shortcuts, deletion and line wrapping
+- [ ] Fix selection behavior after undo/redo #selection
 ## DONE
+- [x] Navigate to a #sub-board from any selected item
+- [x] Create a new #sub-board from any selected item
+- [x] Allow #deleting the selected item from a list
+- [x] Allow #deleting the current list from a board
+- [x] Load and save boards and lists using #markdown
 - [x] Move selected item left and right between lists in the active board
 - [x] Move selected item left and right between lists in the active board
 - [x] Navigate between items in the active list
