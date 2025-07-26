@@ -185,13 +185,7 @@ impl App {
                                 KeyCode::Char('d') => self.delete_selected_item(),
                                 KeyCode::Enter => self.edit_current_item(),
                                 KeyCode::Esc => self.pop_board(),
-                                KeyCode::Char(' ') => self
-                                    .active_board_mut()
-                                    .current_list_mut()
-                                    .unwrap()
-                                    .current_item_mut()
-                                    .unwrap()
-                                    .toggle(),
+                                KeyCode::Char(' ') => self.toggle_selected_item(),
                                 KeyCode::Tab => self.push_board(),
                                 KeyCode::Down | KeyCode::Char('j') => {
                                     self.active_board_mut().move_down()
@@ -330,6 +324,15 @@ impl App {
 
     fn delete_selected_list(&mut self) {
         if let Some(mut cmd) = self.active_board_mut().delete_selected_list() {
+            cmd.apply(self.active_board_mut());
+            self.undo
+                .push_front(BoardCommand::new(self.active_board_index(), cmd));
+            self.save_board();
+        }
+    }
+
+    fn toggle_selected_item(&mut self) {
+        if let Some(mut cmd) = self.active_board_mut().toggle_selected_item() {
             cmd.apply(self.active_board_mut());
             self.undo
                 .push_front(BoardCommand::new(self.active_board_index(), cmd));

@@ -230,6 +230,18 @@ impl Board {
         })
     }
 
+    pub fn toggle_selected_item(&mut self) -> Option<Box<dyn Command>> {
+        self.current_list.and_then(|current_list| {
+            self.lists[current_list].selected_item_index.map(|pos| {
+                Box::new(ToggleItemCommand {
+                    list: current_list,
+                    item: pos,
+                    bookmark: self.get_selection_bookmark(),
+                }) as Box<dyn Command>
+            })
+        })
+    }
+
     pub fn shuffle_list_forward(&mut self) -> Option<Box<dyn Command>> {
         if let Some(current_list) = self.current_list {
             if current_list > 0 {

@@ -239,3 +239,22 @@ impl Command for MoveItemCommand {
         self.bookmark.select(board);
     }
 }
+
+pub struct ToggleItemCommand {
+    pub list: usize,
+    pub item: usize,
+    pub bookmark: SelectionBookmark,
+}
+
+impl Command for ToggleItemCommand {
+    fn apply(&mut self, board: &mut Board) {
+        let current_list = &mut board.lists[self.list];
+        current_list.items[self.item].toggle();
+        self.bookmark.select(board);
+    }
+    fn revert(&mut self, board: &mut Board) {
+        let current_list = &mut board.lists[self.list];
+        current_list.items[self.item].toggle();
+        self.bookmark.select(board);
+    }
+}
