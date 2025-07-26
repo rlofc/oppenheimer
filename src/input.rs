@@ -59,7 +59,8 @@ impl InputController {
         } else {
             match key.code {
                 KeyCode::Char(to_insert) => self.enter_char(editable, to_insert),
-                KeyCode::Backspace => self.delete_char(editable, width),
+                KeyCode::Backspace => self.delete_char_backwards(editable, width),
+                KeyCode::Delete => self.delete_char(editable, width),
                 KeyCode::Left => self.move_cursor_left(editable),
                 KeyCode::Right => self.move_cursor_right(editable),
                 KeyCode::Down => self.move_cursor_down(editable, width),
@@ -234,7 +235,7 @@ impl InputController {
             .unwrap_or(text.len())
     }
 
-    fn delete_char<T: Editable>(&mut self, editable: &mut T, width: u16) {
+    fn delete_char_backwards<T: Editable>(&mut self, editable: &mut T, width: u16) {
         let wrapped_text = editable.wrapped(width);
 
         let is_not_cursor_leftmost = self.character_index != 0;
@@ -246,6 +247,19 @@ impl InputController {
             let text = editable.editable_text_mut();
             *text = before_char_to_delete.chain(after_char_to_delete).collect();
             self.move_cursor_left(editable);
+        }
+    }
+
+    fn delete_char<T: Editable>(&mut self, editable: &mut T, width: u16) {
+        let wrapped_text = editable.wrapped(width);
+
+        let is_not_cursor_rightmost = self.character_index < wrapped_text.chars().count();
+        if is_not_cursor_rightmost {
+            let current_index = self.character_index;
+            let before_char_to_delete = wrapped_text.chars().take(current_index);
+            let after_char_to_delete = wrapped_text.chars().skip(current_index + 1);
+            let text = editable.editable_text_mut();
+            *text = before_char_to_delete.chain(after_char_to_delete).collect();
         }
     }
 }
@@ -287,7 +301,7 @@ mod tests {
     }
 
     #[test]
-    fn test_delete_character() {
+    fn test_backspace_character() {
         let mut controller = InputController { character_index: 3 };
         let mut editable = MockEditable {
             text: String::from("abc"),
@@ -304,6 +318,29 @@ mod tests {
 
         controller.input(&mut editable, KeyEvent::from(KeyCode::Backspace), 80);
         assert_eq!(editable.text, "c"); // No change since cursor is at the beginning
+    }
+
+    #[test]
+    fn test_delete_character() {
+        let mut controller = InputController { character_index: 3 };
+        let mut editable = MockEditable {
+            text: String::from("abc"),
+        };
+
+        controller.input(&mut editable, KeyEvent::from(KeyCode::Left), 80);
+        controller.input(&mut editable, KeyEvent::from(KeyCode::Left), 80);
+        controller.input(&mut editable, KeyEvent::from(KeyCode::Delete), 80);
+        assert_eq!(editable.text, "ac");
+
+        controller.input(&mut editable, KeyEvent::from(KeyCode::Delete), 80);
+        assert_eq!(editable.text, "a");
+
+        controller.input(&mut editable, KeyEvent::from(KeyCode::Delete), 80);
+        assert_eq!(editable.text, "a"); // No change since cursor is at the end
+
+        controller.input(&mut editable, KeyEvent::from(KeyCode::Left), 80);
+        controller.input(&mut editable, KeyEvent::from(KeyCode::Delete), 80);
+        assert_eq!(editable.text, "");
     }
 
     #[test]

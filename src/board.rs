@@ -14,6 +14,7 @@ pub struct Board {
     pub lists: Vec<BoardList>,
     pub current_list: Option<usize>,
     pub input_controller: InputController,
+    pub filter: String,
 }
 
 impl Board {
@@ -61,6 +62,7 @@ impl Board {
         self.lists[list]
             .items
             .iter()
+            .filter(|i| i.text.to_lowercase().contains(&self.filter.to_lowercase()))
             .map(|i| i.render(column_width))
             .collect()
     }

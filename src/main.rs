@@ -49,6 +49,7 @@
 // ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 
 use crossterm::event::KeyModifiers;
+use search::{FilteredBoardView, SearchController};
 use std::{collections::VecDeque, path::PathBuf};
 
 mod board;
@@ -56,6 +57,7 @@ mod commands;
 mod input;
 mod list;
 mod markdown;
+mod search;
 
 use board::*;
 use commands::*;
@@ -87,6 +89,8 @@ struct App {
     redo: VecDeque<BoardCommand>,
     staged: Option<Box<dyn StagedCommand>>,
     input_mode: InputMode,
+    search: SearchController,
+    view: FilteredBoardView,
 }
 
 struct BoardReference {
@@ -116,6 +120,7 @@ pub enum InputMode {
     Normal,
     EditTitle,
     EditItem,
+    Search,
 }
 
 impl App {
@@ -179,6 +184,7 @@ impl App {
                         } else {
                             match key.code {
                                 KeyCode::Char('q') => break Ok(()),
+                                KeyCode::Char('/') => self.search(),
                                 KeyCode::Char('u') => self.undo(),
                                 KeyCode::Char('r') => self.redo(),
                                 KeyCode::Char('o') => self.insert_item_to_current_list(),
@@ -227,6 +233,28 @@ impl App {
                                 self.insert_item_to_current_list();
                             }
                             _ => (),
+                        }
+                    }
+                    InputMode::Search => {
+                        let view = self.view.clone();
+                        match key.code {
+                            KeyCode::Down | KeyCode::Up | KeyCode::Left | KeyCode::Right => {
+                                view.navigate_actual_board(self.active_board_mut(), &key);
+                            }
+                            KeyCode::Esc | KeyCode::Enter => {
+                                if self.active_board().filter != "" {
+                                    view.select_item_from_view(self.active_board_mut());
+                                }
+                                self.active_board_mut().filter = "".to_string();
+                                self.input_mode = InputMode::Normal;
+                            }
+                            _ => {
+                                self.active_board_mut().filter = self.search.input(key);
+                                let updated_view = self.search.reflect(self.active_board());
+                                updated_view.update_view_selection(self.active_board_mut());
+                                self.view = updated_view;
+                                ()
+                            }
                         }
                     }
                 }
@@ -473,6 +501,10 @@ impl App {
                     lists_screen_area.y + y,
                 ))
             }
+            InputMode::Search => {
+                self.search.draw(frame);
+                ()
+            }
             _ => {}
         }
         self.draw_status_line(frame, bottom);
@@ -480,5 +512,10 @@ impl App {
 
     fn save_board(&self) {
         self.write_md(&self.filename);
+    }
+
+    fn search(&mut self) {
+        self.search.clear();
+        self.input_mode = InputMode::Search;
     }
 }

@@ -163,6 +163,7 @@ impl BoardList {
     }
 
     pub fn clear_selection(&mut self) {
+        self.selected_item_index = None;
         self.state.borrow_mut().select(None);
     }
 
