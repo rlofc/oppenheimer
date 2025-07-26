@@ -33,7 +33,7 @@ impl BoardItem {
             if self.board.is_some() {
                 line += "▍".light_blue();
             } else {
-                line += "▍".black();
+                line += "▍".fg(Color::Indexed(239));
             }
             let line_string = line_text.to_string();
             let mut action = String::new();

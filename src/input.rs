@@ -1,5 +1,4 @@
-use crossterm::event::{KeyEvent, KeyModifiers};
-use ratatui::crossterm::event::KeyCode;
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 pub trait Editable {
     fn editable_text(&self) -> &String;

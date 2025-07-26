@@ -478,7 +478,7 @@ pub fn render_list(
     list_state: &mut ListState,
     modded_items: Vec<ListItem>,
 ) {
-    let selected_type = Style::default().bg(Color::Black);
+    let selected_type = Style::default().bg(Color::Indexed(235));
     let list = List::new(modded_items)
         .style(Color::White)
         .highlight_style(selected_type);
