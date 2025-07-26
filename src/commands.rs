@@ -232,7 +232,7 @@ impl Command for MoveItemCommand {
     fn apply(&mut self, board: &mut Board) {
         let current_list = &mut board.lists[self.from_list];
         if let Some(item) = current_list.items.get(self.from_index).cloned() {
-            current_list.remove_selected_item();
+            current_list.remove_item(self.from_index);
             board.current_list = Some(self.to_list);
             let current_list = &mut board.lists[self.to_list];
             if self.to_index < current_list.items.len() {

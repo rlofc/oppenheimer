@@ -114,16 +114,9 @@ impl Editable for BoardList {
 }
 
 impl BoardList {
-    pub fn remove_selected_item(&mut self) {
-        if let Some(selected_item_index) = self.selected_item_index {
-            self.items.remove(selected_item_index);
-            self.state.borrow_mut().select(None);
-            self.selected_item_index = if selected_item_index > 0 {
-                Some(selected_item_index - 1)
-            } else {
-                None
-            };
-        }
+    pub fn remove_item(&mut self, index: usize) {
+        self.items.remove(index);
+        self.clear_selection();
     }
     pub fn select_previous(&mut self) {
         if let Some(selected_item_index) = self.selected_item_index {
@@ -200,7 +193,7 @@ mod tests {
     use std::cell::RefCell;
 
     #[test]
-    fn test_remove_selected_item() {
+    fn test_remove_item() {
         let mut board_list = BoardList {
             name: String::from("Test Board"),
             items: vec![BoardItem::new("Item 1"), BoardItem::new("Item 2")],
@@ -210,7 +203,7 @@ mod tests {
             _color: Color::default(),
         };
 
-        board_list.remove_selected_item();
+        board_list.remove_item(0);
         assert_eq!(board_list.items.len(), 1);
         assert_eq!(board_list.selected_item_index, None);
     }
