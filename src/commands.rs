@@ -249,7 +249,7 @@ impl Command for MoveItemCommand {
     fn revert(&mut self, board: &mut Board) {
         let current_list = &mut board.lists[self.to_list];
         if let Some(item) = current_list.items.get(self.to_index).cloned() {
-            current_list.remove_selected_item();
+            current_list.items.remove(self.to_index);
             board.current_list = Some(self.from_list);
             let current_list = &mut board.lists[self.from_list];
             current_list.items.insert(self.from_index, item);
