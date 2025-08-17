@@ -191,7 +191,6 @@ impl Command for ShuffleListCommand {
     fn apply(&mut self, board: &mut Board) {
         board.lists.swap(self.from_index, self.to_index);
         board.current_list = Some(self.to_index);
-        self.bookmark.select(board);
     }
     fn revert(&mut self, board: &mut Board) {
         board.lists.swap(self.to_index, self.from_index);
