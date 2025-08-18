@@ -1,5 +1,5 @@
 use ratatui::{
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Constraint, Flex, Layout, Rect},
     style::{Color, Style, Stylize},
     widgets::{Block, Borders, Clear, Padding, Paragraph},
     Frame,
@@ -7,18 +7,20 @@ use ratatui::{
 
 pub fn show_help_popup(frame: &mut Frame) {
     let area = frame.area();
-    let constraints = Constraint::from_fills([3, 2, 3]);
 
-    let horizontal_layout = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints(constraints)
-        .margin(10)
-        .split(area);
-
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints(Constraint::from_maxes([0, 30, 0]))
-        .split(horizontal_layout[1]);
+    fn center_horizontal(area: Rect, width: u16) -> Rect {
+        let [area] = Layout::horizontal([Constraint::Length(width)])
+            .flex(Flex::Center)
+            .areas(area);
+        area
+    }
+    fn center_vertical(area: Rect, height: u16) -> Rect {
+        let [area] = Layout::vertical([Constraint::Length(height)])
+            .flex(Flex::Center)
+            .areas(area);
+        area
+    }
+    let area = center_vertical(center_horizontal(area, 60), 30);
 
     let block = Block::default()
         .title("Help")
@@ -75,15 +77,10 @@ pub fn show_help_popup(frame: &mut Frame) {
 
     let footer = Paragraph::new("Press any key to close").dark_gray();
 
-    frame.render_widget(Clear, chunks[1]);
-    frame.render_widget(content, chunks[1]);
+    frame.render_widget(Clear, area);
+    frame.render_widget(content, area);
     frame.render_widget(
         footer.alignment(Alignment::Center),
-        Rect::new(
-            chunks[1].x + 1,
-            chunks[1].y + chunks[1].height - 2,
-            chunks[1].width - 2,
-            1,
-        ),
+        Rect::new(area.x + 1, area.y + area.height - 2, area.width - 2, 1),
     );
 }
