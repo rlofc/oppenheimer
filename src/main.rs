@@ -300,6 +300,7 @@ impl App {
             self.undo
                 .push_front(BoardCommand::new(self.active_board_index(), cmd));
             self.save_board();
+            self.redo.clear();
         }
     }
 
@@ -309,6 +310,7 @@ impl App {
             self.undo
                 .push_front(BoardCommand::new(self.active_board_index(), cmd));
             self.save_board();
+            self.redo.clear();
         }
     }
 
@@ -320,6 +322,7 @@ impl App {
                 self.undo
                     .push_front(BoardCommand::new(self.active_board_index(), cmd));
                 self.save_board();
+                self.redo.clear();
             }
         }
     }
@@ -332,6 +335,7 @@ impl App {
                 self.undo
                     .push_front(BoardCommand::new(self.active_board_index(), cmd));
                 self.save_board();
+                self.redo.clear();
             }
         }
     }
@@ -349,6 +353,7 @@ impl App {
             self.undo
                 .push_front(BoardCommand::new(self.active_board_index(), cmd));
             self.save_board();
+            self.redo.clear();
         }
     }
 
@@ -365,6 +370,7 @@ impl App {
             self.undo
                 .push_front(BoardCommand::new(self.active_board_index(), cmd));
             self.save_board();
+            self.redo.clear();
         }
     }
 
@@ -374,6 +380,7 @@ impl App {
             self.undo
                 .push_front(BoardCommand::new(self.active_board_index(), cmd));
             self.save_board();
+            self.redo.clear();
         }
     }
 
@@ -383,6 +390,7 @@ impl App {
             self.undo
                 .push_front(BoardCommand::new(self.active_board_index(), cmd));
             self.save_board();
+            self.redo.clear();
         }
     }
 

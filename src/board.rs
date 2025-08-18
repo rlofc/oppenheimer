@@ -171,36 +171,40 @@ impl Board {
     }
 
     pub fn insert_item_to_current_list(&mut self) -> Option<Box<dyn StagedCommand>> {
-        self.current_list.map(|current_list| {
-            let list = &mut self.lists[current_list];
-            let pos = if let Some(index) = list.selected_item_index {
-                (index + 1).min(list.items.len())
-            } else {
-                0
-            };
-            list.selected_item_index = Some(pos);
-            list.items.insert(pos, BoardItem::default());
-            list.state.borrow_mut().select_next();
-            Box::new(AddItemCommand {
-                list: current_list,
-                item: pos,
-                value: BoardItem::new(""),
-                bookmark: self.get_selection_bookmark(),
-            }) as Box<dyn StagedCommand>
-        })
-    }
-
-    pub fn delete_selected_item(&mut self) -> Option<Box<dyn Command>> {
-        self.current_list.and_then(|current_list| {
-            self.lists[current_list].selected_item_index.map(|pos| {
-                Box::new(DeleteItemCommand {
+        self.current_list
+            .map(|current_list| {
+                let list = &mut self.lists[current_list];
+                let pos = if let Some(index) = list.selected_item_index {
+                    (index + 1).min(list.items.len())
+                } else {
+                    0
+                };
+                list.selected_item_index = Some(pos);
+                list.items.insert(pos, BoardItem::default());
+                list.state.borrow_mut().select_next();
+                Box::new(AddItemCommand {
                     list: current_list,
                     item: pos,
                     value: BoardItem::new(""),
                     bookmark: self.get_selection_bookmark(),
-                }) as Box<dyn Command>
+                }) as Box<dyn StagedCommand>
             })
-        })
+            .or_else(|| None)
+    }
+
+    pub fn delete_selected_item(&mut self) -> Option<Box<dyn Command>> {
+        self.current_list
+            .and_then(|current_list| {
+                self.lists[current_list].selected_item_index.map(|pos| {
+                    Box::new(DeleteItemCommand {
+                        list: current_list,
+                        item: pos,
+                        value: BoardItem::new(""),
+                        bookmark: self.get_selection_bookmark(),
+                    }) as Box<dyn Command>
+                })
+            })
+            .or_else(|| None)
     }
 
     pub fn insert_list_to_board(&mut self) -> Option<Box<dyn StagedCommand>> {
@@ -220,25 +224,29 @@ impl Board {
     }
 
     pub fn delete_selected_list(&mut self) -> Option<Box<dyn Command>> {
-        self.current_list.map(|current_list| {
-            Box::new(DeleteListCommand {
-                list: current_list,
-                value: BoardList::default(),
-                bookmark: self.get_selection_bookmark(),
-            }) as Box<dyn Command>
-        })
-    }
-
-    pub fn toggle_selected_item(&mut self) -> Option<Box<dyn Command>> {
-        self.current_list.and_then(|current_list| {
-            self.lists[current_list].selected_item_index.map(|pos| {
-                Box::new(ToggleItemCommand {
+        self.current_list
+            .map(|current_list| {
+                Box::new(DeleteListCommand {
                     list: current_list,
-                    item: pos,
+                    value: BoardList::default(),
                     bookmark: self.get_selection_bookmark(),
                 }) as Box<dyn Command>
             })
-        })
+            .or_else(|| None)
+    }
+
+    pub fn toggle_selected_item(&mut self) -> Option<Box<dyn Command>> {
+        self.current_list
+            .and_then(|current_list| {
+                self.lists[current_list].selected_item_index.map(|pos| {
+                    Box::new(ToggleItemCommand {
+                        list: current_list,
+                        item: pos,
+                        bookmark: self.get_selection_bookmark(),
+                    }) as Box<dyn Command>
+                })
+            })
+            .or_else(|| None)
     }
 
     pub fn shuffle_list_forward(&mut self) -> Option<Box<dyn Command>> {
