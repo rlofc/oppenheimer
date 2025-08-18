@@ -322,7 +322,8 @@ impl Board {
         let mut result = String::new();
         if let Some(text) = self.current_list().unwrap().get_selected_item_text() {
             let (s, o) = textwrap::unfill(text);
-            let wrapped_text = textwrap::wrap(&s, o.width(column_width as usize - 1));
+            let wrapped_text =
+                textwrap::wrap(&s, wrapping_presets(o.width(column_width as usize - 1)));
             result = wrapped_text.join("\n");
 
             let mut last_width = wrapped_text.iter().last().unwrap().len();
@@ -374,7 +375,7 @@ impl Board {
         {
             let text = &self.lists[self.current_list.unwrap()].items[j].text;
             let (s, o) = textwrap::unfill(text);
-            let wrapped_text = textwrap::wrap(&s, o.width(column_width - 1));
+            let wrapped_text = textwrap::wrap(&s, wrapping_presets(o.width(column_width - 1)));
             start_y += wrapped_text.len() + 1;
         }
 

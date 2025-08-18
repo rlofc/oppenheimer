@@ -42,6 +42,11 @@ pub enum InputAction {
     NewItem,
 }
 
+pub fn wrapping_presets(o: textwrap::Options) -> textwrap::Options {
+    o.break_words(false)
+        .word_splitter(textwrap::WordSplitter::NoHyphenation)
+}
+
 impl InputController {
     pub fn input<T: Editable>(
         &mut self,

@@ -27,7 +27,7 @@ impl BoardItem {
     pub fn render(&self, column_width: usize) -> ListItem {
         let mut text = Text::default();
         let (s, o) = textwrap::unfill(&self.text);
-        let wrapped_text = textwrap::wrap(&s, o.width(column_width - 1));
+        let wrapped_text = textwrap::wrap(&s, wrapping_presets(o.width(column_width - 1)));
         for line_text in wrapped_text.iter() {
             let mut line = Line::default();
             if self.board.is_some() {
@@ -86,7 +86,7 @@ impl Editable for BoardItem {
     }
     fn wrapped(&self, width: u16) -> String {
         let (s, o) = textwrap::unfill(&self.text);
-        let wrapped_text = textwrap::wrap(&s, o.width(width as usize - 1));
+        let wrapped_text = textwrap::wrap(&s, wrapping_presets(o.width(width as usize - 1)));
         wrapped_text.join("\n")
     }
 }
