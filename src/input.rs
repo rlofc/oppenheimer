@@ -11,8 +11,8 @@ pub trait Editable {
         let previous_char = self.editable_text().chars().nth(index - 1);
         let current_char = self.editable_text().chars().nth(index);
         match (previous_char, current_char) {
-            (Some(prev), Some(curr)) => !prev.is_alphanumeric() && curr.is_alphanumeric(),
-            (None, Some(curr)) => curr.is_alphanumeric(),
+            (Some(prev), Some(curr)) => prev.is_whitespace() && !curr.is_whitespace(),
+            (None, Some(curr)) => !curr.is_whitespace(),
             _ => false,
         }
     }
@@ -23,8 +23,8 @@ pub trait Editable {
         let previous_char = self.editable_text().chars().nth(index - 1);
         let current_char = self.editable_text().chars().nth(index);
         match (previous_char, current_char) {
-            (Some(prev), Some(curr)) => prev.is_alphanumeric() && !curr.is_alphanumeric(),
-            (Some(prev), None) => prev.is_alphanumeric(),
+            (Some(prev), Some(curr)) => !prev.is_whitespace() && curr.is_whitespace(),
+            (Some(prev), None) => !prev.is_whitespace(),
             _ => false,
         }
     }
