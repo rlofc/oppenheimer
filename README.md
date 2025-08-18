@@ -6,7 +6,7 @@
 
 **OPPENHEIMER** is a Taskell-inspired hierarchical listboard app, perfect for terminal lovers who hope to make the world a better place.
 
-**OPPENHEIMER** is for the organized scientist. Whether you're plotting world domination or just trying to get through Monday, this listboard app will help you stay on track - or not.
+Whether you're plotting world domination or just trying to get through Monday, this listboard app will help you stay on track - or not.
 
 ## Features
 
@@ -44,8 +44,10 @@
 | `Space`                        | Toggle current item selection |
 | `Tab`                          | Open item sub-board           |
 | `Esc`                          | Go back to the previous board |
+| `\`                            | Search                        |
 | `u`                            | Undo action                   |
 | `r`                            | Redo action                   |
+| `?`                            | Help                          |
 | `q`                            | Quit application              |
 
 ## Contribution
