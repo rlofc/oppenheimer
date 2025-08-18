@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use crate::input::Editable;
+use crate::input::{wrapping_presets, Editable};
 use ratatui::{
     prelude::*,
     widgets::{ListItem, ListState},

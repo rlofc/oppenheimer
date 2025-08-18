@@ -1,4 +1,9 @@
-use crate::{commands::*, input::InputAction, list::*, InputController};
+use crate::{
+    commands::*,
+    input::{wrapping_presets, InputAction},
+    list::*,
+    InputController,
+};
 
 use crossterm::event::KeyEvent;
 use ratatui::{
