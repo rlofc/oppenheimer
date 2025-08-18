@@ -188,7 +188,7 @@ impl App {
                 )
                 .expect("Unable to write to file");
                 if let Some(board_index) = item.board {
-                    self.write_sub_board(file, board_index, level + 1);
+                    self.write_sub_board(file, board_index, level + 2);
                 }
             }
         }
