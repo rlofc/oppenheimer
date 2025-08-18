@@ -163,14 +163,10 @@ impl App {
                         } else if key.modifiers == KeyModifiers::CONTROL {
                             match key.code {
                                 KeyCode::Left | KeyCode::Char('h') => {
-                                    self.move_to_prev_list(
-                                        self.active_board().get_current_selection_index(),
-                                    );
+                                    self.move_to_prev_list();
                                 }
                                 KeyCode::Right | KeyCode::Char('l') => {
-                                    self.move_to_next_list(
-                                        self.active_board().get_current_selection_index(),
-                                    );
+                                    self.move_to_next_list();
                                 }
                                 KeyCode::Down | KeyCode::Char('j') => {
                                     self.deprioritize_selected_item();
@@ -316,21 +312,27 @@ impl App {
         }
     }
 
-    fn move_to_prev_list(&mut self, index: usize) {
-        if let Some(mut cmd) = self.active_board_mut().move_to_prev_list(index) {
-            cmd.apply(self.active_board_mut());
-            self.undo
-                .push_front(BoardCommand::new(self.active_board_index(), cmd));
-            self.save_board();
+    fn move_to_prev_list(&mut self) {
+        if self.active_board().current_list.is_some() {
+            let index = self.active_board().get_current_selection_index();
+            if let Some(mut cmd) = self.active_board_mut().move_to_prev_list(index) {
+                cmd.apply(self.active_board_mut());
+                self.undo
+                    .push_front(BoardCommand::new(self.active_board_index(), cmd));
+                self.save_board();
+            }
         }
     }
 
-    fn move_to_next_list(&mut self, index: usize) {
-        if let Some(mut cmd) = self.active_board_mut().move_to_next_list(index) {
-            cmd.apply(self.active_board_mut());
-            self.undo
-                .push_front(BoardCommand::new(self.active_board_index(), cmd));
-            self.save_board();
+    fn move_to_next_list(&mut self) {
+        if self.active_board().current_list.is_some() {
+            let index = self.active_board().get_current_selection_index();
+            if let Some(mut cmd) = self.active_board_mut().move_to_next_list(index) {
+                cmd.apply(self.active_board_mut());
+                self.undo
+                    .push_front(BoardCommand::new(self.active_board_index(), cmd));
+                self.save_board();
+            }
         }
     }
 
