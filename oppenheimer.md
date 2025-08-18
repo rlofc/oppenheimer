@@ -1,10 +1,20 @@
 # Project Name
 ## BACKLOG
+- [ ] Add a 'focus' mode that dims all items in a list except the first (configurable) one #feature #configuration
+- [ ] Allow user #configuration (see sub-board)
+  - backlog
+    - [ ] Load config.toml file from the user's configuration folder #configuration
+    - [ ] Support configuring colors theme #configuration #themes
+    - [ ] Support configuring keyboard shortcuts #configuration #keyboard
+    - [ ] Support configuring automatic behaviors (eg automatically toggle item as complete when sub- board is complete. #configuration
+  - staged
+  - in-progress
+  - done
+- [ ] Allow changing the view to a pivot board using #tags-as-lists
 - [ ] Show board statistics in the #status-bar (number of items, checked items, etc)
 - [ ] Allow detailing items with a #description and possibly other metadata
-- [ ] Allow changing the view to a pivot board using #tags-as-lists
-- [ ] Allow user #configuration (to be further defined)
 - [ ] Automate building and publishing #automation
+- [ ] Highlight search matches in items when searching #search
 ## STAGED
 - [ ] Show the current #sub-board item name in the #status-bar - possibly with breadcrumbs to other parent boards
 ## IN-PROGRESS
