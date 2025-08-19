@@ -6,6 +6,11 @@ pub struct SelectionBookmark {
     pub item: Option<usize>,
 }
 
+pub struct Context<'a> {
+    pub board: &'a mut Board,
+    pub clipboard: Option<String>,
+}
+
 impl SelectionBookmark {
     pub fn select(&self, board: &mut Board) {
         self.select_with_offset(board, 0);
@@ -35,8 +40,8 @@ impl SelectionBookmark {
 }
 
 pub trait Command {
-    fn apply(&mut self, board: &mut Board);
-    fn revert(&mut self, board: &mut Board);
+    fn apply(&mut self, context: &mut Context);
+    fn revert(&mut self, context: &mut Context);
 }
 
 pub trait StagedCommand: Command {
@@ -54,13 +59,13 @@ pub struct ChangeTextCommand {
 }
 
 impl Command for ChangeTextCommand {
-    fn apply(&mut self, board: &mut Board) {
-        board.lists[self.list].items[self.item].text = self.new.clone();
-        self.bookmark.select(board);
+    fn apply(&mut self, context: &mut Context) {
+        context.board.lists[self.list].items[self.item].text = self.new.clone();
+        self.bookmark.select(context.board);
     }
-    fn revert(&mut self, board: &mut Board) {
-        board.lists[self.list].items[self.item].text = self.old.clone();
-        self.bookmark.select(board);
+    fn revert(&mut self, context: &mut Context) {
+        context.board.lists[self.list].items[self.item].text = self.old.clone();
+        self.bookmark.select(context.board);
     }
 }
 
@@ -82,19 +87,19 @@ pub struct AddListCommand {
 }
 
 impl Command for AddListCommand {
-    fn apply(&mut self, board: &mut Board) {
-        board.lists.insert(
+    fn apply(&mut self, context: &mut Context) {
+        context.board.lists.insert(
             self.list,
             BoardList {
                 name: self.title.clone(),
                 ..Default::default()
             },
         );
-        self.bookmark.select(board);
+        self.bookmark.select(context.board);
     }
-    fn revert(&mut self, board: &mut Board) {
-        board.lists.remove(self.list);
-        self.bookmark.select(board);
+    fn revert(&mut self, context: &mut Context) {
+        context.board.lists.remove(self.list);
+        self.bookmark.select(context.board);
     }
 }
 
@@ -105,17 +110,17 @@ pub struct DeleteListCommand {
 }
 
 impl Command for DeleteListCommand {
-    fn apply(&mut self, board: &mut Board) {
-        self.value = board.lists.remove(self.list);
-        self.bookmark.select(board);
+    fn apply(&mut self, context: &mut Context) {
+        self.value = context.board.lists.remove(self.list);
+        self.bookmark.select(context.board);
     }
-    fn revert(&mut self, board: &mut Board) {
-        board.lists.insert(self.list, self.value.clone());
-        if let Some(current_list) = board.current_list_mut() {
+    fn revert(&mut self, context: &mut Context) {
+        context.board.lists.insert(self.list, self.value.clone());
+        if let Some(current_list) = context.board.current_list_mut() {
             current_list.clear_selection();
         }
         // board.current_list = Some(self.list);
-        self.bookmark.select(board);
+        self.bookmark.select(context.board);
     }
 }
 
@@ -138,15 +143,15 @@ pub struct AddItemCommand {
 }
 
 impl Command for AddItemCommand {
-    fn apply(&mut self, board: &mut Board) {
-        board.lists[self.list]
+    fn apply(&mut self, context: &mut Context) {
+        context.board.lists[self.list]
             .items
             .insert(self.item, self.value.clone());
-        self.bookmark.select(board);
+        self.bookmark.select(context.board);
     }
-    fn revert(&mut self, board: &mut Board) {
-        board.lists[self.list].items.remove(self.item);
-        self.bookmark.select_with_offset(board, -1);
+    fn revert(&mut self, context: &mut Context) {
+        context.board.lists[self.list].items.remove(self.item);
+        self.bookmark.select_with_offset(context.board, -1);
     }
 }
 
@@ -168,16 +173,16 @@ pub struct DeleteItemCommand {
 }
 
 impl Command for DeleteItemCommand {
-    fn apply(&mut self, board: &mut Board) {
-        self.value = board.lists[self.list].items.remove(self.item);
-        board.lists[self.list].set_selection_index(self.item.saturating_sub(1));
-        board.lists[self.list].set_selection();
+    fn apply(&mut self, context: &mut Context) {
+        self.value = context.board.lists[self.list].items.remove(self.item);
+        context.board.lists[self.list].set_selection_index(self.item.saturating_sub(1));
+        context.board.lists[self.list].set_selection();
     }
-    fn revert(&mut self, board: &mut Board) {
-        board.lists[self.list]
+    fn revert(&mut self, context: &mut Context) {
+        context.board.lists[self.list]
             .items
             .insert(self.item, self.value.clone());
-        self.bookmark.select(board);
+        self.bookmark.select(context.board);
     }
 }
 
@@ -188,13 +193,13 @@ pub struct ShuffleListCommand {
 }
 
 impl Command for ShuffleListCommand {
-    fn apply(&mut self, board: &mut Board) {
-        board.lists.swap(self.from_index, self.to_index);
-        board.current_list = Some(self.to_index);
+    fn apply(&mut self, context: &mut Context) {
+        context.board.lists.swap(self.from_index, self.to_index);
+        context.board.current_list = Some(self.to_index);
     }
-    fn revert(&mut self, board: &mut Board) {
-        board.lists.swap(self.to_index, self.from_index);
-        self.bookmark.select(board);
+    fn revert(&mut self, context: &mut Context) {
+        context.board.lists.swap(self.to_index, self.from_index);
+        self.bookmark.select(context.board);
     }
 }
 
@@ -206,16 +211,16 @@ pub struct ShuffleItemCommand {
 }
 
 impl Command for ShuffleItemCommand {
-    fn apply(&mut self, board: &mut Board) {
-        let current_list = &mut board.lists[self.list];
+    fn apply(&mut self, context: &mut Context) {
+        let current_list = &mut context.board.lists[self.list];
         current_list.items.swap(self.from_index, self.to_index);
         current_list.set_selection_index(self.to_index);
         current_list.set_selection();
     }
-    fn revert(&mut self, board: &mut Board) {
-        let current_list = &mut board.lists[self.list];
+    fn revert(&mut self, context: &mut Context) {
+        let current_list = &mut context.board.lists[self.list];
         current_list.items.swap(self.to_index, self.from_index);
-        self.bookmark.select(board);
+        self.bookmark.select(context.board);
     }
 }
 
@@ -228,12 +233,12 @@ pub struct MoveItemCommand {
 }
 
 impl Command for MoveItemCommand {
-    fn apply(&mut self, board: &mut Board) {
-        let current_list = &mut board.lists[self.from_list];
+    fn apply(&mut self, context: &mut Context) {
+        let current_list = &mut context.board.lists[self.from_list];
         if let Some(item) = current_list.items.get(self.from_index).cloned() {
             current_list.remove_item(self.from_index);
-            board.current_list = Some(self.to_list);
-            let current_list = &mut board.lists[self.to_list];
+            context.board.current_list = Some(self.to_list);
+            let current_list = &mut context.board.lists[self.to_list];
             if self.to_index < current_list.items.len() {
                 current_list.items.insert(self.to_index, item);
                 current_list.set_selection_index(self.to_index);
@@ -245,15 +250,15 @@ impl Command for MoveItemCommand {
             current_list.set_selection();
         }
     }
-    fn revert(&mut self, board: &mut Board) {
-        let current_list = &mut board.lists[self.to_list];
+    fn revert(&mut self, context: &mut Context) {
+        let current_list = &mut context.board.lists[self.to_list];
         if let Some(item) = current_list.items.get(self.to_index).cloned() {
             current_list.items.remove(self.to_index);
-            board.current_list = Some(self.from_list);
-            let current_list = &mut board.lists[self.from_list];
+            context.board.current_list = Some(self.from_list);
+            let current_list = &mut context.board.lists[self.from_list];
             current_list.items.insert(self.from_index, item);
         }
-        self.bookmark.select(board);
+        self.bookmark.select(context.board);
     }
 }
 
@@ -264,14 +269,77 @@ pub struct ToggleItemCommand {
 }
 
 impl Command for ToggleItemCommand {
-    fn apply(&mut self, board: &mut Board) {
-        let current_list = &mut board.lists[self.list];
+    fn apply(&mut self, context: &mut Context) {
+        let current_list = &mut context.board.lists[self.list];
         current_list.items[self.item].toggle();
-        self.bookmark.select(board);
+        self.bookmark.select(context.board);
     }
-    fn revert(&mut self, board: &mut Board) {
-        let current_list = &mut board.lists[self.list];
+    fn revert(&mut self, context: &mut Context) {
+        let current_list = &mut context.board.lists[self.list];
         current_list.items[self.item].toggle();
-        self.bookmark.select(board);
+        self.bookmark.select(context.board);
+    }
+}
+
+pub struct YankItemCommand {
+    pub list: usize,
+    pub item: usize,
+    pub value: BoardItem,
+    pub last_clipboard: Option<String>,
+}
+
+impl Command for YankItemCommand {
+    fn apply(&mut self, context: &mut Context) {
+        self.value = context.board.lists[self.list].items[self.item].clone();
+        self.last_clipboard = context.clipboard.clone();
+        context.clipboard = Some(self.value.text.clone());
+    }
+    fn revert(&mut self, context: &mut Context) {
+        context.clipboard = self.last_clipboard.clone();
+    }
+}
+
+pub struct CutItemCommand {
+    pub list: usize,
+    pub item: usize,
+    pub value: BoardItem,
+    pub bookmark: SelectionBookmark,
+    pub last_clipboard: Option<String>,
+}
+
+impl Command for CutItemCommand {
+    fn apply(&mut self, context: &mut Context) {
+        self.value = context.board.lists[self.list].items.remove(self.item);
+        context.board.lists[self.list].set_selection_index(self.item.saturating_sub(1));
+        context.board.lists[self.list].set_selection();
+        self.last_clipboard = context.clipboard.clone();
+        context.clipboard = Some(self.value.text.clone());
+    }
+    fn revert(&mut self, context: &mut Context) {
+        context.board.lists[self.list]
+            .items
+            .insert(self.item, self.value.clone());
+        self.bookmark.select(context.board);
+        context.clipboard = self.last_clipboard.clone();
+    }
+}
+
+pub struct PasteItemCommand {
+    pub list: usize,
+    pub item: usize,
+    pub bookmark: SelectionBookmark,
+}
+
+impl Command for PasteItemCommand {
+    fn apply(&mut self, context: &mut Context) {
+        context.board.lists[self.list].items.insert(
+            self.item,
+            BoardItem::new(&context.clipboard.as_ref().unwrap().clone()),
+        );
+        self.bookmark.select(context.board);
+    }
+    fn revert(&mut self, context: &mut Context) {
+        context.board.lists[self.list].items.remove(self.item);
+        self.bookmark.select_with_offset(context.board, -1);
     }
 }

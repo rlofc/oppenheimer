@@ -20,7 +20,7 @@ pub fn show_help_popup(frame: &mut Frame) {
             .areas(area);
         area
     }
-    let area = center_vertical(center_horizontal(area, 60), 30);
+    let area = center_vertical(center_horizontal(area, 60), 32);
 
     let block = Block::default()
         .title("Help")
@@ -48,6 +48,9 @@ pub fn show_help_popup(frame: &mut Frame) {
         ("Shift-l", "Shuffle list left"),
         ("Tab", "Navigate to the item child-board"),
         ("Esc", "Go back to the parent-board"),
+        ("y", "Yank selected item"),
+        ("x", "Cut selected item"),
+        ("p", "Paste item"),
         ("u", "Undo action"),
         ("r", "Redo action"),
         ("q", "Quit"),

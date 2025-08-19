@@ -93,6 +93,7 @@ struct App {
     input_mode: InputMode,
     search: SearchController,
     view: FilteredBoardView,
+    clipboard: Option<String>,
 }
 
 struct BoardReference {
@@ -189,6 +190,9 @@ impl App {
                                 KeyCode::Char('r') => self.redo(),
                                 KeyCode::Char('o') => self.insert_item_to_current_list(),
                                 KeyCode::Char('d') => self.delete_selected_item(),
+                                KeyCode::Char('x') => self.cut_selected_item(),
+                                KeyCode::Char('y') => self.yank_selected_item(),
+                                KeyCode::Char('p') => self.paste_item(),
                                 KeyCode::Enter => self.edit_current_item(),
                                 KeyCode::Esc => self.pop_board(),
                                 KeyCode::Char(' ') => self.toggle_selected_item(),
@@ -265,6 +269,15 @@ impl App {
         }
     }
 
+    fn make_context(&mut self) -> Context {
+        // TODO: context should actually become app state
+        let d = self.clipboard.clone();
+        Context {
+            board: self.active_board_mut(),
+            clipboard: d,
+        }
+    }
+
     fn commit_board_command(&mut self) {
         let mut c = self.staged.take().unwrap();
         if c.finalize(self.active_board_mut()) {
@@ -273,7 +286,8 @@ impl App {
             self.save_board();
             self.redo.clear();
         } else {
-            c.revert(self.active_board_mut());
+            let mut context = self.make_context();
+            c.revert(&mut context);
         }
     }
 
@@ -296,7 +310,8 @@ impl App {
 
     fn prioritize_selected_item(&mut self) {
         if let Some(mut cmd) = self.active_board_mut().prioritize_selected_item() {
-            cmd.apply(self.active_board_mut());
+            let mut context = self.make_context();
+            cmd.apply(&mut context);
             self.undo
                 .push_front(BoardCommand::new(self.active_board_index(), cmd));
             self.save_board();
@@ -306,7 +321,8 @@ impl App {
 
     fn deprioritize_selected_item(&mut self) {
         if let Some(mut cmd) = self.active_board_mut().deprioritize_selected_item() {
-            cmd.apply(self.active_board_mut());
+            let mut context = self.make_context();
+            cmd.apply(&mut context);
             self.undo
                 .push_front(BoardCommand::new(self.active_board_index(), cmd));
             self.save_board();
@@ -318,7 +334,8 @@ impl App {
         if self.active_board().current_list.is_some() {
             let index = self.active_board().get_current_selection_index();
             if let Some(mut cmd) = self.active_board_mut().move_to_prev_list(index) {
-                cmd.apply(self.active_board_mut());
+                let mut context = self.make_context();
+                cmd.apply(&mut context);
                 self.undo
                     .push_front(BoardCommand::new(self.active_board_index(), cmd));
                 self.save_board();
@@ -331,7 +348,8 @@ impl App {
         if self.active_board().current_list.is_some() {
             let index = self.active_board().get_current_selection_index();
             if let Some(mut cmd) = self.active_board_mut().move_to_next_list(index) {
-                cmd.apply(self.active_board_mut());
+                let mut context = self.make_context();
+                cmd.apply(&mut context);
                 self.undo
                     .push_front(BoardCommand::new(self.active_board_index(), cmd));
                 self.save_board();
@@ -349,7 +367,45 @@ impl App {
 
     fn delete_selected_item(&mut self) {
         if let Some(mut cmd) = self.active_board_mut().delete_selected_item() {
-            cmd.apply(self.active_board_mut());
+            let mut context = self.make_context();
+            cmd.apply(&mut context);
+            self.undo
+                .push_front(BoardCommand::new(self.active_board_index(), cmd));
+            self.save_board();
+            self.redo.clear();
+        }
+    }
+
+    fn cut_selected_item(&mut self) {
+        if let Some(mut cmd) = self.active_board_mut().cut_selected_item() {
+            let mut context = self.make_context();
+            cmd.apply(&mut context);
+            self.clipboard = context.clipboard;
+            self.undo
+                .push_front(BoardCommand::new(self.active_board_index(), cmd));
+            self.save_board();
+            self.redo.clear();
+        }
+    }
+
+    fn yank_selected_item(&mut self) {
+        if let Some(mut cmd) = self.active_board_mut().yank_selected_item() {
+            let mut context = self.make_context();
+            cmd.apply(&mut context);
+            self.clipboard = context.clipboard;
+            self.undo
+                .push_front(BoardCommand::new(self.active_board_index(), cmd));
+            self.save_board();
+            self.redo.clear();
+        }
+    }
+
+    fn paste_item(&mut self) {
+        if self.clipboard.is_some()
+            && let Some(mut cmd) = self.active_board_mut().paste_item()
+        {
+            let mut context = self.make_context();
+            cmd.apply(&mut context);
             self.undo
                 .push_front(BoardCommand::new(self.active_board_index(), cmd));
             self.save_board();
@@ -366,7 +422,8 @@ impl App {
 
     fn delete_selected_list(&mut self) {
         if let Some(mut cmd) = self.active_board_mut().delete_selected_list() {
-            cmd.apply(self.active_board_mut());
+            let mut context = self.make_context();
+            cmd.apply(&mut context);
             self.undo
                 .push_front(BoardCommand::new(self.active_board_index(), cmd));
             self.save_board();
@@ -376,7 +433,8 @@ impl App {
 
     fn toggle_selected_item(&mut self) {
         if let Some(mut cmd) = self.active_board_mut().toggle_selected_item() {
-            cmd.apply(self.active_board_mut());
+            let mut context = self.make_context();
+            cmd.apply(&mut context);
             self.undo
                 .push_front(BoardCommand::new(self.active_board_index(), cmd));
             self.save_board();
@@ -386,7 +444,8 @@ impl App {
 
     fn shuffle_list_forward(&mut self) {
         if let Some(mut cmd) = self.active_board_mut().shuffle_list_forward() {
-            cmd.apply(self.active_board_mut());
+            let mut context = self.make_context();
+            cmd.apply(&mut context);
             self.undo
                 .push_front(BoardCommand::new(self.active_board_index(), cmd));
             self.save_board();
@@ -396,7 +455,8 @@ impl App {
 
     fn shuffle_list_back(&mut self) {
         if let Some(mut cmd) = self.active_board_mut().shuffle_list_back() {
-            cmd.apply(self.active_board_mut());
+            let mut context = self.make_context();
+            cmd.apply(&mut context);
             self.undo
                 .push_front(BoardCommand::new(self.active_board_index(), cmd));
             self.save_board();
@@ -468,9 +528,12 @@ impl App {
                     source_item: None,
                 });
             }
-            board_command
-                .command
-                .revert(&mut self.boards[board_command.board_index]);
+            let mut context = Context {
+                board: &mut self.boards[board_command.board_index],
+                clipboard: self.clipboard.clone(),
+            };
+            board_command.command.revert(&mut context);
+            self.clipboard = context.clipboard;
             self.redo.push_front(board_command);
             self.save_board();
         }
@@ -489,9 +552,12 @@ impl App {
                     source_item: None,
                 });
             }
-            board_command
-                .command
-                .apply(&mut self.boards[board_command.board_index]);
+            let mut context = Context {
+                board: &mut self.boards[board_command.board_index],
+                clipboard: self.clipboard.clone(),
+            };
+            board_command.command.apply(&mut context);
+            self.clipboard = context.clipboard;
             self.undo.push_front(board_command);
             self.save_board();
         }

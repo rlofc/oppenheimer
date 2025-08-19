@@ -212,6 +212,58 @@ impl Board {
             .or_else(|| None)
     }
 
+    pub fn cut_selected_item(&mut self) -> Option<Box<dyn Command>> {
+        self.current_list
+            .and_then(|current_list| {
+                self.lists[current_list].selected_item_index.map(|pos| {
+                    Box::new(CutItemCommand {
+                        list: current_list,
+                        item: pos,
+                        value: BoardItem::new(""),
+                        bookmark: self.get_selection_bookmark(),
+                        last_clipboard: None,
+                    }) as Box<dyn Command>
+                })
+            })
+            .or_else(|| None)
+    }
+
+    pub fn yank_selected_item(&mut self) -> Option<Box<dyn Command>> {
+        self.current_list
+            .and_then(|current_list| {
+                self.lists[current_list].selected_item_index.map(|pos| {
+                    Box::new(YankItemCommand {
+                        list: current_list,
+                        item: pos,
+                        value: BoardItem::new(""),
+                        bookmark: self.get_selection_bookmark(),
+                        last_clipboard: None,
+                    }) as Box<dyn Command>
+                })
+            })
+            .or_else(|| None)
+    }
+
+    pub fn paste_item(&mut self) -> Option<Box<dyn Command>> {
+        self.current_list
+            .map(|current_list| {
+                let list = &mut self.lists[current_list];
+                let pos = if let Some(index) = list.selected_item_index {
+                    (index + 1).min(list.items.len())
+                } else {
+                    0
+                };
+                list.selected_item_index = Some(pos);
+                list.state.borrow_mut().select_next();
+                Box::new(PasteItemCommand {
+                    list: current_list,
+                    item: pos,
+                    bookmark: self.get_selection_bookmark(),
+                }) as Box<dyn Command>
+            })
+            .or_else(|| None)
+    }
+
     pub fn insert_list_to_board(&mut self) -> Option<Box<dyn StagedCommand>> {
         let pos = if let Some(current_list) = self.current_list {
             self.lists[current_list].state.borrow_mut().select(None);
@@ -550,6 +602,19 @@ mod tests {
         }
     }
 
+    impl<'a> Context<'a> {
+        pub fn from_board(board: &'a mut Board) -> Self {
+            Context {
+                board,
+                clipboard: None,
+            }
+        }
+        pub fn with_clipboard(mut self, content: String) -> Self {
+            self.clipboard = Some(content);
+            self
+        }
+    }
+
     #[test]
     fn test_move_within_list() {
         let mut board = board_with_a_short_list();
@@ -574,7 +639,7 @@ mod tests {
         let mut board = board_with_a_short_list();
         board.move_down();
         let cmd = board.prioritize_selected_item();
-        cmd.unwrap().apply(&mut board);
+        cmd.unwrap().apply(&mut Context::from_board(&mut board));
         assert_eq!(board.get_current_selection_index(), 0);
         assert_eq!(
             board
@@ -590,7 +655,7 @@ mod tests {
     fn test_deprioritize() {
         let mut board = board_with_a_short_list();
         let cmd = board.deprioritize_selected_item();
-        cmd.unwrap().apply(&mut board);
+        cmd.unwrap().apply(&mut Context::from_board(&mut board));
         assert_eq!(board.get_current_selection_index(), 1);
         assert_eq!(
             board
@@ -633,7 +698,7 @@ mod tests {
     fn test_move_item_between_lists() {
         let mut board = boards_with_two_short_lists();
         let cmd = board.move_to_next_list(0);
-        cmd.unwrap().apply(&mut board);
+        cmd.unwrap().apply(&mut Context::from_board(&mut board));
         assert_eq!(board.get_current_selection_index(), 0);
         assert_eq!(board.current_list_mut().unwrap().name, "list 2");
         assert_eq!(
@@ -648,7 +713,7 @@ mod tests {
         board.move_down();
         board.move_down();
         let cmd = board.move_to_prev_list(3);
-        cmd.unwrap().apply(&mut board);
+        cmd.unwrap().apply(&mut Context::from_board(&mut board));
         assert_eq!(board.get_current_selection_index(), 2);
         assert_eq!(board.current_list_mut().unwrap().name, "list 1");
         assert_eq!(
@@ -671,12 +736,41 @@ mod tests {
     }
 
     #[test]
+    fn test_delete_item() {
+        let mut board = board_with_a_short_list();
+        let cmd = board.delete_selected_item();
+        cmd.unwrap().apply(&mut Context::from_board(&mut board));
+        assert_eq!(board.get_current_selection_index(), 0);
+        assert_eq!(board.current_list_mut().unwrap().items.len(), 2);
+    }
+
+    #[test]
+    fn test_yank_and_paste() {
+        let mut board = boards_with_two_short_lists();
+        let v = {
+            let cmd = board.yank_selected_item();
+            let mut context = Context::from_board(&mut board);
+            cmd.unwrap().apply(&mut context);
+            let clipboard_content = context.clipboard.unwrap();
+            assert_eq!(clipboard_content, "list 1 item 1");
+            clipboard_content
+        };
+        {
+            board.move_right();
+            let cmd = board.paste_item();
+            cmd.unwrap()
+                .apply(&mut Context::from_board(&mut board).with_clipboard(v));
+        }
+        assert_eq!(board.current_list_mut().unwrap().items.len(), 4);
+    }
+
+    #[test]
     fn test_shuffle_list_forward() {
         let mut board = board_with_empty_lists();
         board.current_list = Some(1);
         let cmd = board.shuffle_list_forward();
         assert!(cmd.is_some());
-        cmd.unwrap().apply(&mut board);
+        cmd.unwrap().apply(&mut Context::from_board(&mut board));
         assert_eq!(board.current_list, Some(0));
     }
 
@@ -694,7 +788,7 @@ mod tests {
         board.current_list = Some(0);
         let cmd = board.shuffle_list_back();
         assert!(cmd.is_some());
-        cmd.unwrap().apply(&mut board);
+        cmd.unwrap().apply(&mut Context::from_board(&mut board));
         assert_eq!(board.current_list, Some(1));
     }
 

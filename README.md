@@ -45,6 +45,9 @@ Whether you're plotting world domination or just trying to get through Monday, t
 | `Tab`                          | Open item sub-board           |
 | `Esc`                          | Go back to the previous board |
 | `\`                            | Search                        |
+| `y`                            | Yank selected item            |
+| `x`                            | Cut selected item             |
+| `p`                            | Paste item                    |
 | `u`                            | Undo action                   |
 | `r`                            | Redo action                   |
 | `?`                            | Help                          |
