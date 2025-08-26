@@ -2,13 +2,13 @@
 ## BACKLOG
 - [ ] Add ctrl+e to edit list headers
 - [ ] Show board statistics in the #status-bar (number of items, checked items, etc)
-- [ ] Automate building and publishing #automation
 - [ ] Highlight search matches in items when searching #search
 - [ ] Show keyboard shortcuts in the #status-bar ?
 - [ ] Consider de/serializing the commands trail for pesistent undo/redo
 - [x] Allow detailing items with a #description and possibly other metadata
 - [x] Allow changing the view to a pivot board using #tags-as-lists
 ## STAGED
+- [ ] Automate building and publishing #automation
 - [ ] Show some sort of a progress indicator on items with #sub-boards
 ## IN-PROGRESS
 - [ ] Allow user #configuration (see sub-board)
