@@ -575,14 +575,49 @@ impl App {
         }
     }
 
+    fn draw_header(&self, frame: &mut Frame, rect: Rect) {
+        let mut path = String::new();
+        let mut starting_length = (frame.area().width as usize) / (self.board_path.len() + 1);
+        for p in self.board_path.iter().rev() {
+            if let (Some(list), Some(item)) = (p.source_list, p.source_item) {
+                path.push_str(&self.config.board_config.path_separator.0);
+                let board_name = &self.boards[p.source_board].lists[list].items[item].text;
+                let truncated_name = if board_name.chars().count() > starting_length {
+                    board_name.chars().take(starting_length).collect::<String>() + "..."
+                } else {
+                    board_name.to_string()
+                };
+                path.push_str(&truncated_name);
+                starting_length *= 2;
+            }
+        }
+        let list = Paragraph::new(path);
+        frame.render_widget(list, rect);
+    }
+
     fn draw_status_line(&self, frame: &mut Frame, rect: Rect) {
-        let list = Paragraph::new("");
+        let list = Paragraph::new(vec![Line::from(vec![
+            Span::styled("[", Style::default()),
+            Span::styled(
+                "?",
+                Style::default()
+                    .fg(Color::Gray)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("] HELP", Style::default()),
+        ])]);
+
         frame.render_widget(list, rect);
     }
 
     fn draw(&mut self, frame: &mut Frame) {
-        let horizontal = Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]);
-        let [center, bottom] = horizontal.areas(frame.area());
+        let horizontal = Layout::vertical([
+            Constraint::Length(1),
+            Constraint::Fill(1),
+            Constraint::Length(1),
+        ]);
+        let [top, center, bottom] = horizontal.areas(frame.area());
+        self.draw_status_line(frame, bottom);
         let lists_screen_area = self.active_board_mut().draw(frame, center);
         match self.input_mode {
             InputMode::EditTitle => {
@@ -602,7 +637,7 @@ impl App {
             }
             _ => {}
         }
-        self.draw_status_line(frame, bottom);
+        self.draw_header(frame, top);
         if self.input_mode == InputMode::Help {
             self.draw_help_popup(frame);
         }

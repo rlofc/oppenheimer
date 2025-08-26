@@ -429,7 +429,7 @@ impl Board {
             .sum();
 
         let wrapped_text = &self.lists[self.current_list.unwrap()].name;
-        let (mut x, mut y) = (0, 1);
+        let (mut x, mut y) = (0, 2);
 
         for c in wrapped_text
             .chars()

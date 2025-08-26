@@ -2,6 +2,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     layout::{Position, Rect},
     style::{Color, Stylize},
+    widgets::Clear,
     Frame,
 };
 
@@ -149,12 +150,11 @@ impl SearchController {
             1 + self.input.character_index as u16,
             frame.area().height - 1,
         ));
+        let area = Rect::new(0, frame.area().height - 1, frame.area().width - 1, 1);
+        frame.render_widget(Clear, area);
         let widget = ratatui::widgets::Paragraph::new(format!("/{}", self.token.value.clone()))
             .bg(Color::DarkGray);
-        frame.render_widget(
-            widget,
-            Rect::new(0, frame.area().height - 1, frame.area().width - 1, 1),
-        );
+        frame.render_widget(widget, area);
     }
 
     pub fn reflect(&self, board: &Board) -> FilteredBoardView {
