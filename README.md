@@ -1,11 +1,10 @@
 <p align="center">
   <a href="https://github.com/rlofc/oppenheimer/actions/workflows/ci.yml">
-      <img src="https://github.com/rlofc/oppenheimer/actions/workflows/ci.yml/badge.svg?branch=master" alt="Github Actions CI Build Status">
+      <img src="https://github.com/rlofc/oppenheimer/actions/workflows/ci.yml/badge.svg?branch=master" alt="Github Actions CI Build Status"/>
   </a>
   <a href="https://crates.io/crates/oppenheimer">
       <img src="https://img.shields.io/crates/v/oppenheimer.svg?style=flat-square" alt="crates.io">
   </a>
-  <br>
 </p>
 
 # OPPENHEIMER
