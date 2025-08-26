@@ -54,6 +54,7 @@ use std::{collections::VecDeque, path::PathBuf};
 
 mod board;
 mod commands;
+mod config;
 mod help;
 mod input;
 mod list;
@@ -69,6 +70,8 @@ use list::*;
 use ratatui::{
     crossterm::event::{self, Event, KeyCode},
     layout::{Constraint, Layout, Position, Rect},
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
     widgets::Paragraph,
     DefaultTerminal, Frame,
 };
@@ -94,6 +97,7 @@ struct App {
     search: SearchController,
     view: FilteredBoardView,
     clipboard: Option<String>,
+    config: config::Config,
 }
 
 struct BoardReference {
@@ -133,16 +137,22 @@ impl App {
             .nth(1)
             .expect("Usage: oppenheimer {filename.md}")
             .into();
+        let config = App::load_config();
         let mut app = Self {
-            boards: vec![Board::default()],
+            boards: vec![Board::default().with_config(config.board_config.clone())],
             board_path: VecDeque::new(),
             filename: filename.clone(),
+            config,
             ..Default::default()
         };
         if std::path::Path::new(&filename).exists() {
             app.load_md(&filename, 0);
         }
         app
+    }
+
+    fn load_config() -> config::Config {
+        confy::load("oppenheimer", Some("config")).unwrap()
     }
 
     fn run(&mut self, mut terminal: DefaultTerminal) -> std::io::Result<()> {
@@ -489,9 +499,11 @@ impl App {
         if let Some(current_list) = self.active_board().current_list() {
             if let Some(current_item) = current_list.current_item() {
                 if let Some(board) = current_item.board {
+                    self.boards[board].config = self.config.board_config.clone();
                     self.push_board_for_active_item(board);
                 } else {
-                    self.boards.push(Board::default());
+                    self.boards
+                        .push(Board::default().with_config(self.config.board_config.clone()));
                     let new_board_index = self.boards.len() - 1;
                     self.active_board_mut()
                         .current_list_mut()

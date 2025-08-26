@@ -14,6 +14,9 @@ crossterm = "0.28.1"
 markdown = "=1.0.0-alpha.22"
 ratatui = "0.29.0"
 textwrap = "0.16.1"
+confy = "1.0.0"
+serde = "^1.0"
+serde_derive = "^1.0"
 
 [profile.release-minified]
 inherits = "release"

@@ -1,6 +1,9 @@
 use std::cell::RefCell;
 
-use crate::input::{wrapping_presets, Editable};
+use crate::{
+    config,
+    input::{wrapping_presets, Editable},
+};
 use ratatui::{
     prelude::*,
     widgets::{ListItem, ListState},
@@ -24,16 +27,22 @@ impl BoardItem {
     pub fn toggle(&mut self) {
         self.done = !self.done;
     }
-    pub fn render(&self, column_width: usize) -> ListItem {
+    pub fn render(
+        &self,
+        index: usize,
+        column_width: usize,
+        is_dimmable: bool,
+        styles: &config::Styles,
+    ) -> ListItem {
         let mut text = Text::default();
         let (s, o) = textwrap::unfill(&self.text);
         let wrapped_text = textwrap::wrap(&s, wrapping_presets(o.width(column_width - 1)));
         for line_text in wrapped_text.iter() {
             let mut line = Line::default();
             if self.board.is_some() {
-                line += "▍".light_blue();
+                line += "▍".fg(styles.fringe_on.fg).bg(styles.fringe_on.bg);
             } else {
-                line += "▍".fg(Color::Indexed(239));
+                line += "▍".fg(styles.fringe_off.fg).bg(styles.fringe_off.bg);
             }
             let line_string = line_text.to_string();
             let mut action = String::new();
@@ -42,15 +51,15 @@ impl BoardItem {
             for ch in line_string.chars() {
                 if ch == '#' {
                     if !in_hash {
-                        line += action.clone().white();
+                        line += action.clone().fg(styles.item.fg).bg(styles.item.bg);
                         action.clear();
                         in_hash = true;
                     }
-                    line += "#".dark_gray();
+                    line += "#".fg(styles.tag_hashsign.fg).bg(styles.tag_hashsign.bg);
                 } else if ch.is_whitespace() {
                     action.push(ch);
                     if in_hash {
-                        line += action.clone().yellow();
+                        line += action.clone().fg(styles.tag.fg).bg(styles.tag.bg);
                         action.clear();
                         in_hash = false;
                     }
@@ -60,9 +69,9 @@ impl BoardItem {
             }
             if !action.is_empty() {
                 if in_hash {
-                    line += action.clone().yellow();
+                    line += action.clone().fg(styles.tag.fg).bg(styles.tag.bg);
                 } else {
-                    line += action.clone().white();
+                    line += action.clone().fg(styles.item.fg).bg(styles.item.bg);
                 }
             }
             text.push_line(if self.done {
@@ -73,7 +82,11 @@ impl BoardItem {
         }
         text.extend([""]);
 
-        ListItem::new(text)
+        ListItem::new(if index > 0 && is_dimmable {
+            text.dim()
+        } else {
+            text
+        })
     }
 }
 

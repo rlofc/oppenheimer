@@ -1,5 +1,6 @@
 use crate::{
     commands::*,
+    config::{BoardConfig, Styles},
     input::{wrapping_presets, InputAction},
     list::*,
     InputController,
@@ -14,15 +15,21 @@ use ratatui::{
     Frame,
 };
 
-#[derive(Default, Clone)]
+#[derive(Clone, Default)]
 pub struct Board {
     pub lists: Vec<BoardList>,
     pub current_list: Option<usize>,
     pub input_controller: InputController,
     pub filter: String,
+    pub config: BoardConfig,
 }
 
 impl Board {
+    pub fn with_config(mut self, config: BoardConfig) -> Self {
+        self.config = config;
+        self
+    }
+
     pub fn number_of_lists(&self) -> usize {
         self.lists.len()
     }
@@ -63,12 +70,30 @@ impl Board {
     }
 
     fn render_items(&self, list: usize) -> Vec<ListItem> {
+        let is_dimmable = {
+            let dim_tailing_items = self.config.dim_tailing_items;
+            let focused_list = self.current_list.unwrap_or(list + 1) == list;
+            let current_item = self
+                .current_list()
+                .and_then(|l| l.selected_item_index)
+                .unwrap_or(usize::MAX);
+
+            let list_exception = true; //self.current_list().is_none_or(|l| !l.name.contains("IN"));
+
+            move |index: usize| {
+                !(focused_list && index == current_item || !dim_tailing_items || !list_exception)
+            }
+        };
+
         let column_width = self.lists[list].width as usize;
         self.lists[list]
             .items
             .iter()
-            .filter(|i| i.text.to_lowercase().contains(&self.filter.to_lowercase()))
-            .map(|i| i.render(column_width))
+            .enumerate()
+            .filter(|(_, i)| i.text.to_lowercase().contains(&self.filter.to_lowercase()))
+            .map(|(index, i)| {
+                i.render(index, column_width, is_dimmable(index), &self.config.styles)
+            })
             .collect()
     }
 
@@ -497,10 +522,15 @@ impl Board {
             let col = columns_top[i + 1];
             let lines = vec![
                 Line::raw(""),
-                Line::from(list.name.clone().to_uppercase())
-                    .white()
+                Line::from(title)
+                    .fg(self.config.styles.header.fg)
+                    .bg(self.config.styles.header.bg)
                     .bold()
-                    .apply_if(self.current_list == Some(i), |l| l.underlined()),
+                    .apply_if(self.current_list == Some(i), |l| {
+                        l.underlined()
+                            .bg(self.config.styles.active_header.bg)
+                            .fg(self.config.styles.active_header.fg)
+                    }),
             ];
             frame.render_widget(Paragraph::new(lines), col);
         }
@@ -517,6 +547,7 @@ impl Board {
                 columns_center[i + 1],
                 &mut list.state.borrow_mut(),
                 self.render_items(i),
+                &self.config.styles,
             );
         }
 
@@ -543,8 +574,9 @@ pub fn render_list(
     area: Rect,
     list_state: &mut ListState,
     modded_items: Vec<ListItem>,
+    styles: &Styles,
 ) {
-    let selected_type = Style::default().bg(Color::Indexed(235));
+    let selected_type = Style::default().bg(styles.selected.bg);
     let list = List::new(modded_items)
         .style(Color::White)
         .highlight_style(selected_type);
