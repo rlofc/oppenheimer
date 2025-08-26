@@ -1,6 +1,16 @@
 # Project Name
 ## BACKLOG
-- [ ] Add a 'focus' mode that dims all items in a list except the first (configurable) one #feature #configuration
+- [ ] Add ctrl+e to edit list headers
+- [ ] Show board statistics in the #status-bar (number of items, checked items, etc)
+- [ ] Automate building and publishing #automation
+- [ ] Highlight search matches in items when searching #search
+- [ ] Show keyboard shortcuts in the #status-bar ?
+- [ ] Consider de/serializing the commands trail for pesistent undo/redo
+- [x] Allow detailing items with a #description and possibly other metadata
+- [x] Allow changing the view to a pivot board using #tags-as-lists
+## STAGED
+- [ ] Show some sort of a progress indicator on items with #sub-boards
+## IN-PROGRESS
 - [ ] Allow user #configuration (see sub-board)
   - backlog
     - [ ] Load config.toml file from the user's configuration folder #configuration
@@ -10,19 +20,22 @@
   - staged
   - in-progress
   - done
-- [ ] Allow changing the view to a pivot board using #tags-as-lists
-- [ ] Show board statistics in the #status-bar (number of items, checked items, etc)
-- [ ] Allow detailing items with a #description and possibly other metadata
-- [ ] Automate building and publishing #automation
-- [ ] Highlight search matches in items when searching #search
-## STAGED
-- [ ] Show the current #sub-board item name in the #status-bar - possibly with breadcrumbs to other parent boards
-## IN-PROGRESS
-- [ ] Provide a keyboard shortcuts #help window
-- [ ] Support searching items, filtering and showing only matching results #search
 - [ ] Provide standard #text-editing behavior for items, including cursor movement shortcuts, deletion and line wrapping
+  - TODO
+    - [ ] Select text using shift+arrow keys
+  - DONE
+    - [x] Arrow keys multi-line navigation
+    - [x] Support insertion and deletion (DEL and BACKSPACE)
+    - [x] Support HOME and END keys to jump to the beginning and ending of an item
+    - [x] Skip between words using ctrl+arrow keys
+    - [x] Wrap lines without breaking words
 - [ ] Fix selection behavior after undo/redo #selection
+- [ ] Add a 'focus' mode that dims all items in a list except the first (configurable) one #feature #configuration
+- [ ] Support yanking, cutting and pasting items (useful when moving items between boards)
+- [ ] Show the current #sub-board item name in the #status-bar - possibly with breadcrumbs to other parent boards
 ## DONE
+- [x] Provide a keyboard shortcuts #help window
+- [x] Support searching items, filtering and showing only matching results #search
 - [x] Navigate to a #sub-board from any selected item
 - [x] Create a new #sub-board from any selected item
 - [x] Allow #deleting the selected item from a list
