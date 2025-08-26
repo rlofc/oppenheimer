@@ -261,7 +261,6 @@ impl Board {
                         list: current_list,
                         item: pos,
                         value: BoardItem::new(""),
-                        bookmark: self.get_selection_bookmark(),
                         last_clipboard: None,
                     }) as Box<dyn Command>
                 })
@@ -522,7 +521,7 @@ impl Board {
             let col = columns_top[i + 1];
             let lines = vec![
                 Line::raw(""),
-                Line::from(title)
+                Line::from(list.name.clone().to_uppercase())
                     .fg(self.config.styles.header.fg)
                     .bg(self.config.styles.header.bg)
                     .bold()
