@@ -169,23 +169,23 @@ impl InputController {
             (line, index_in_line) = if wrapped_text.chars().nth(i).unwrap_or('\0') == '\n' {
                 (line - 1, x[line - 2].len() - 1)
             } else {
-                (line, index_in_line - 1)
+                (line, index_in_line.saturating_sub(1))
             };
-            if line == current_line - 2 {
+            if line == current_line.saturating_sub(2) {
                 line += 1;
-                last_i = i + x[line - 1].len();
+                last_i = i + x[line.saturating_sub(1)].len();
                 break;
             }
             if i == 0 {
                 if current_line == 1 {
                     last_i = 0;
                 } else {
-                    last_i = i + x[line - 1].len() - 1;
+                    last_i = i + x[line.saturating_sub(1)].len() - 1;
                 }
                 break;
             }
             if line < current_line && index_in_line == current_index_in_line {
-                resolved_index = Some(i - 1);
+                resolved_index = Some(i.saturating_sub(1));
                 break;
             }
         }
