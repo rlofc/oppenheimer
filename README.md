@@ -1,3 +1,13 @@
+<p align="center">
+  <a href="https://github.com/rlofc/oppenheimer/actions/workflows/ci.yml">
+      <img src="https://github.com/rlofc/oppenheimer/actions/workflows/ci.yml/badge.svg?branch=master" alt="Github Actions CI Build Status">
+  </a>
+  <a href="https://crates.io/crates/oppenheimer">
+      <img src="https://img.shields.io/crates/v/oppenheimer.svg?style=flat-square" alt="crates.io">
+  </a>
+  <br>
+</p>
+
 # OPPENHEIMER
 
 ## Earn your reputation, one task at a time
@@ -52,6 +62,54 @@ Whether you're plotting world domination or just trying to get through Monday, t
 | `r`                            | Redo action                   |
 | `?`                            | Help                          |
 | `q`                            | Quit application              |
+
+## Configuring using `config.toml`
+
+Oppenheimer can be customized using a `config.toml` file. Here are the different entities you can configure:
+
+### `BoardConfig`
+
+#### Options
+
+- **`dim_tailing_items`**: This boolean option determines whether to dim trailing items in the board. The default is `false`.
+
+- **`path_separator`**: This setting specifies the separator string used when rendering board paths. By default, it is set to ` 〉 `.
+
+- **`Styles`**: This section allows customization of the visual styles. 
+
+### `Styles`
+
+You can specify the styles for various elements in your configuration file. Each style can have a foreground (`fg`) and a background (`bg`) color.
+
+#### Color Specification
+
+- **Named Colors**: You can use predefined color names like `black`, `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`, `darkgray`, `lightred`, `lightgreen`, `lightyellow`, `lightblue`, `lightmagenta`, `lightcyan`, `lightgray`.
+  
+- **Hex Colors**: You can define colors using hex codes, e.g., `#FF00FF` for magenta.
+
+- **Indexed Colors**: Oppenheimer supports indexed colors. Use an integer to specify an indexed color.
+
+#### Style Options
+
+- **`header`**: Style for list headers.
+
+- **`active_header`**: Style for the active list header.
+
+- **`item`**: Style for list items.
+
+- **`tag`**: Style for `#tags`.
+
+- **`tag_hashsign`**: Style for the hash sign in tags.
+
+- **`fringe_on`**: Style when an item fringe is set to `on` (when it has a sub-board).
+
+- **`fringe_off`**: Style when the fringe is set to `off`.
+
+- **`selected`**: Style for selected items (usually used just to set the background).
+
+### Defaults
+
+When not using an existing `config.toml` file, Oppenheimer will generate a default one.
 
 ## Contribution
 
