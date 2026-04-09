@@ -17,7 +17,10 @@ pub trait Editable {
         }
     }
     fn is_word_end(&self, index: usize) -> bool {
-        if index == self.editable_text().len() {
+        if index == 0 {
+            return false;
+        }
+        if index == self.editable_text().chars().count() {
             return true;
         }
         let previous_char = self.editable_text().chars().nth(index - 1);
@@ -63,8 +66,8 @@ impl InputController {
         } else {
             match key.code {
                 KeyCode::Char(to_insert) => self.enter_char(editable, to_insert),
-                KeyCode::Backspace => self.delete_char_backwards(editable, width),
-                KeyCode::Delete => self.delete_char(editable, width),
+                KeyCode::Backspace => self.delete_char_backwards(editable),
+                KeyCode::Delete => self.delete_char(editable),
                 KeyCode::Left => self.move_cursor_left(editable),
                 KeyCode::Right => self.move_cursor_right(editable),
                 KeyCode::Down => self.move_cursor_down(editable, width),
@@ -131,7 +134,7 @@ impl InputController {
         ) = self.get_positioning_data(editable, width);
 
         let mut resolved_index: Option<usize> = None;
-        for i in self.character_index..wrapped_text.len() {
+        for i in self.character_index..wrapped_text.chars().count() {
             last_i = i;
             (line, index_in_line) = if wrapped_text.chars().nth(i).unwrap_or('\0') == '\n' {
                 (line + 1, 0)
@@ -167,20 +170,20 @@ impl InputController {
         let mut resolved_index: Option<usize> = None;
         for i in (0..self.character_index).rev() {
             (line, index_in_line) = if wrapped_text.chars().nth(i).unwrap_or('\0') == '\n' {
-                (line - 1, x[line - 2].len() - 1)
+                (line - 1, x[line - 2].chars().count().saturating_sub(1))
             } else {
                 (line, index_in_line.saturating_sub(1))
             };
             if line == current_line.saturating_sub(2) {
                 line += 1;
-                last_i = i + x[line.saturating_sub(1)].len();
+                last_i = i + x[line.saturating_sub(1)].chars().count();
                 break;
             }
             if i == 0 {
                 if current_line == 1 {
                     last_i = 0;
                 } else {
-                    last_i = i + x[line.saturating_sub(1)].len() - 1;
+                    last_i = i + x[line.saturating_sub(1)].chars().count().saturating_sub(1);
                 }
                 break;
             }
@@ -203,7 +206,7 @@ impl InputController {
 
     fn move_cursor_word_right<T: Editable>(&mut self, editable: &T) {
         let mut new_index = self.character_index + 1;
-        let len = editable.editable_text().len();
+        let len = editable.editable_text().chars().count();
         while new_index < len && !editable.is_word_start(new_index) {
             new_index = new_index.saturating_add(1);
         }
@@ -239,31 +242,19 @@ impl InputController {
             .unwrap_or(text.len())
     }
 
-    fn delete_char_backwards<T: Editable>(&mut self, editable: &mut T, width: u16) {
-        let wrapped_text = editable.wrapped(width);
-
-        let is_not_cursor_leftmost = self.character_index != 0;
-        if is_not_cursor_leftmost {
-            let current_index = self.character_index;
-            let from_left_to_current_index = current_index - 1;
-            let before_char_to_delete = wrapped_text.chars().take(from_left_to_current_index);
-            let after_char_to_delete = wrapped_text.chars().skip(current_index);
-            let text = editable.editable_text_mut();
-            *text = before_char_to_delete.chain(after_char_to_delete).collect();
+    fn delete_char_backwards<T: Editable>(&mut self, editable: &mut T) {
+        if self.character_index != 0 {
             self.move_cursor_left(editable);
+            let byte_idx = self.byte_index(editable);
+            editable.editable_text_mut().remove(byte_idx);
         }
     }
 
-    fn delete_char<T: Editable>(&mut self, editable: &mut T, width: u16) {
-        let wrapped_text = editable.wrapped(width);
-
-        let is_not_cursor_rightmost = self.character_index < wrapped_text.chars().count();
-        if is_not_cursor_rightmost {
-            let current_index = self.character_index;
-            let before_char_to_delete = wrapped_text.chars().take(current_index);
-            let after_char_to_delete = wrapped_text.chars().skip(current_index + 1);
-            let text = editable.editable_text_mut();
-            *text = before_char_to_delete.chain(after_char_to_delete).collect();
+    fn delete_char<T: Editable>(&mut self, editable: &mut T) {
+        let text_len = editable.editable_text().chars().count();
+        if self.character_index < text_len {
+            let byte_idx = self.byte_index(editable);
+            editable.editable_text_mut().remove(byte_idx);
         }
     }
 }
