@@ -49,6 +49,7 @@
 // ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 
 use crossterm::event::KeyModifiers;
+use ratatui_textarea::{Input, Key, TextArea};
 use search::{FilteredBoardView, SearchController};
 use std::{collections::VecDeque, path::PathBuf};
 
@@ -56,7 +57,6 @@ mod board;
 mod commands;
 mod config;
 mod help;
-mod input;
 mod list;
 mod markdown;
 mod search;
@@ -64,16 +64,15 @@ mod search;
 use board::*;
 use commands::*;
 use help::*;
-use input::*;
 use list::*;
 
 use ratatui::{
-    crossterm::event::{self, Event, KeyCode},
-    layout::{Constraint, Layout, Position, Rect},
-    style::{Color, Modifier, Style},
-    text::{Line, Span},
-    widgets::Paragraph,
     DefaultTerminal, Frame,
+    crossterm::event::{self, Event, KeyCode},
+    layout::{Constraint, Layout, Rect},
+    style::{Color, Modifier, Style},
+    text::{Line, Span, Text},
+    widgets::Paragraph,
 };
 
 fn main() {
@@ -83,6 +82,34 @@ fn main() {
         eprintln!("Application error: {:?}", err);
     }
     ratatui::restore();
+}
+
+fn crossterm_to_input(key: ratatui::crossterm::event::KeyEvent) -> Input {
+    use ratatui::crossterm::event::{KeyCode as KC, KeyModifiers as KM};
+    let k = match key.code {
+        KC::Char(c) => Key::Char(c),
+        KC::Enter => Key::Enter,
+        KC::Backspace => Key::Backspace,
+        KC::Delete => Key::Delete,
+        KC::Left => Key::Left,
+        KC::Right => Key::Right,
+        KC::Up => Key::Up,
+        KC::Down => Key::Down,
+        KC::Home => Key::Home,
+        KC::End => Key::End,
+        KC::Tab => Key::Tab,
+        KC::Esc => Key::Esc,
+        KC::PageUp => Key::PageUp,
+        KC::PageDown => Key::PageDown,
+        KC::F(n) => Key::F(n),
+        _ => Key::Null,
+    };
+    Input {
+        key: k,
+        ctrl: key.modifiers.contains(KM::CONTROL),
+        alt: key.modifiers.contains(KM::ALT),
+        shift: key.modifiers.contains(KM::SHIFT),
+    }
 }
 
 #[derive(Default)]
@@ -98,6 +125,7 @@ struct App {
     view: FilteredBoardView,
     clipboard: Option<String>,
     config: config::Config,
+    edit_textarea: Option<TextArea<'static>>,
 }
 
 struct BoardReference {
@@ -224,29 +252,62 @@ impl App {
                         }
                     }
                     InputMode::EditTitle => {
-                        match self.active_board_mut().process_input_for_title(key) {
-                            InputAction::Done => {
-                                self.commit_board_command();
-                                self.input_mode = InputMode::Normal;
+                        if let Some(ref mut textarea) = self.edit_textarea {
+                            match key.code {
+                                KeyCode::Esc => {
+                                    let text =
+                                        textarea.lines().first().cloned().unwrap_or_default();
+                                    let list = self.active_board_mut().current_list.unwrap();
+                                    self.active_board_mut().lists[list].name = text;
+                                    self.commit_board_command();
+                                    self.input_mode = InputMode::Normal;
+                                    self.edit_textarea = None;
+                                }
+                                KeyCode::Enter => {
+                                    let text =
+                                        textarea.lines().first().cloned().unwrap_or_default();
+                                    let list = self.active_board_mut().current_list.unwrap();
+                                    self.active_board_mut().lists[list].name = text;
+                                    self.commit_board_command();
+                                    self.insert_item_to_current_list();
+                                }
+                                _ => {
+                                    textarea.input(crossterm_to_input(key));
+                                }
                             }
-                            InputAction::NewItem => {
-                                self.commit_board_command();
-                                self.insert_item_to_current_list();
-                            }
-                            _ => (),
                         }
                     }
                     InputMode::EditItem => {
-                        match self.active_board_mut().process_input_for_item(key) {
-                            InputAction::Done => {
-                                self.commit_board_command();
-                                self.input_mode = InputMode::Normal;
+                        if let Some(ref mut textarea) = self.edit_textarea {
+                            match key.code {
+                                KeyCode::Esc => {
+                                    let text =
+                                        textarea.lines().first().cloned().unwrap_or_default();
+                                    let list = self.active_board_mut().current_list.unwrap();
+                                    let item = self.active_board_mut().lists[list]
+                                        .selected_item_index
+                                        .unwrap();
+                                    self.active_board_mut().lists[list].items[item].text = text;
+                                    self.commit_board_command();
+                                    self.input_mode = InputMode::Normal;
+                                    self.active_board_mut().editing_item_index = None;
+                                    self.edit_textarea = None;
+                                }
+                                KeyCode::Enter => {
+                                    let text =
+                                        textarea.lines().first().cloned().unwrap_or_default();
+                                    let list = self.active_board_mut().current_list.unwrap();
+                                    let item = self.active_board_mut().lists[list]
+                                        .selected_item_index
+                                        .unwrap();
+                                    self.active_board_mut().lists[list].items[item].text = text;
+                                    self.commit_board_command();
+                                    self.insert_item_to_current_list();
+                                }
+                                _ => {
+                                    textarea.input(crossterm_to_input(key));
+                                }
                             }
-                            InputAction::NewItem => {
-                                self.commit_board_command();
-                                self.insert_item_to_current_list();
-                            }
-                            _ => (),
                         }
                     }
                     InputMode::Search => {
@@ -279,7 +340,7 @@ impl App {
         }
     }
 
-    fn make_context(&mut self) -> Context {
+    fn make_context(&'_ mut self) -> Context<'_> {
         // TODO: context should actually become app state
         let d = self.clipboard.clone();
         Context {
@@ -371,7 +432,16 @@ impl App {
     fn insert_item_to_current_list(&mut self) {
         if let Some(cmd) = self.active_board_mut().insert_item_to_current_list() {
             self.staged = Some(cmd);
-            self.input_mode = InputMode::EditItem
+            self.input_mode = InputMode::EditItem;
+            let list_idx = self.active_board().current_list.unwrap();
+            self.active_board_mut().editing_item_index =
+                self.active_board().lists[list_idx].selected_item_index;
+            self.edit_textarea = Some({
+                let mut ta = TextArea::default();
+                ta.set_wrap_mode(ratatui_textarea::WrapMode::Word);
+                ta.set_cursor_line_style(Style::new().bg(Color::Rgb(0, 0, 0)));
+                ta
+            });
         }
     }
 
@@ -427,6 +497,11 @@ impl App {
         if let Some(cmd) = self.active_board_mut().insert_list_to_board() {
             self.staged = Some(cmd);
             self.input_mode = InputMode::EditTitle;
+            self.edit_textarea = Some({
+                let mut ta = TextArea::default();
+                ta.set_cursor_line_style(Style::new().bg(Color::Rgb(0, 0, 0)));
+                ta
+            });
         }
     }
 
@@ -476,7 +551,16 @@ impl App {
     fn edit_current_item(&mut self) {
         if let Some(cmd) = self.active_board_mut().edit_current_item() {
             self.staged = Some(cmd);
-            self.input_mode = InputMode::EditItem
+            self.input_mode = InputMode::EditItem;
+            let list_idx = self.active_board().current_list.unwrap();
+            self.active_board_mut().editing_item_index =
+                self.active_board().lists[list_idx].selected_item_index;
+            let text = self.active_board_mut().current_raw_item_text().clone();
+            let mut textarea = TextArea::new(vec![text]);
+            textarea.set_wrap_mode(ratatui_textarea::WrapMode::Word);
+            let style = Style::default();
+            textarea.set_cursor_line_style(style);
+            self.edit_textarea = Some(textarea);
         }
     }
 
@@ -618,18 +702,37 @@ impl App {
         ]);
         let [top, center, bottom] = horizontal.areas(frame.area());
         self.draw_status_line(frame, bottom);
-        let lists_screen_area = self.active_board_mut().draw(frame, center);
+        let _lists_screen_area = self.active_board_mut().draw(frame, center);
         match self.input_mode {
             InputMode::EditTitle => {
-                let (x, y) = self.active_board().cursor_position_in_list_title();
-                frame.set_cursor_position(Position::new(lists_screen_area.x + x, y))
+                if let Some(ref textarea) = self.edit_textarea {
+                    let rect = self.active_board().title_edit_rect();
+                    let lines: Vec<Line> = (0..rect.height)
+                        .map(|_| Line::from(" ".repeat(rect.width as usize)))
+                        .collect();
+                    frame.render_widget(
+                        Paragraph::new(Text::from(lines))
+                            .style(Style::new().bg(Color::Rgb(0, 0, 0))),
+                        rect,
+                    );
+                    frame.render_widget(textarea, rect);
+                }
             }
             InputMode::EditItem => {
-                let (x, y) = self.active_board().cursor_position_in_list_item();
-                frame.set_cursor_position(Position::new(
-                    lists_screen_area.x + x,
-                    lists_screen_area.y + y,
-                ))
+                if let Some(ref textarea) = self.edit_textarea {
+                    let mut rect = self.active_board().item_edit_rect(textarea);
+                    rect.height += 1;
+                    let lines: Vec<Line> = (0..rect.height)
+                        .map(|_| Line::from(" ".repeat(rect.width as usize)))
+                        .collect();
+                    frame.render_widget(
+                        Paragraph::new(Text::from(lines))
+                            .style(Style::new().bg(Color::Rgb(0, 0, 0)).fg(Color::White)),
+                        rect,
+                    );
+                    frame.render_widget(textarea, rect);
+                    self.active_board_mut().render_items_below_edit(frame, rect);
+                }
             }
             InputMode::Search => {
                 self.search.draw(frame);

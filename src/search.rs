@@ -1,30 +1,37 @@
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
     layout::{Position, Rect},
-    style::{Color, Stylize},
-    widgets::Clear,
+    widgets::{Clear, Paragraph},
     Frame,
 };
+use ratatui_textarea::{Input, Key, TextArea};
 
-use crate::{
-    board::Board,
-    input::{Editable, InputController},
-};
+use crate::board::Board;
 
-#[derive(Default)]
-struct SearchToken {
-    value: String,
-}
-
-impl Editable for SearchToken {
-    fn editable_text(&self) -> &String {
-        &self.value
-    }
-    fn editable_text_mut(&mut self) -> &mut String {
-        &mut self.value
-    }
-    fn wrapped(&self, _width: u16) -> String {
-        self.value.clone()
+fn crossterm_to_input(key: KeyEvent) -> Input {
+    let k = match key.code {
+        KeyCode::Char(c) => Key::Char(c),
+        KeyCode::Enter => Key::Enter,
+        KeyCode::Backspace => Key::Backspace,
+        KeyCode::Delete => Key::Delete,
+        KeyCode::Left => Key::Left,
+        KeyCode::Right => Key::Right,
+        KeyCode::Up => Key::Up,
+        KeyCode::Down => Key::Down,
+        KeyCode::Home => Key::Home,
+        KeyCode::End => Key::End,
+        KeyCode::Tab => Key::Tab,
+        KeyCode::Esc => Key::Esc,
+        KeyCode::PageUp => Key::PageUp,
+        KeyCode::PageDown => Key::PageDown,
+        KeyCode::F(n) => Key::F(n),
+        _ => Key::Null,
+    };
+    Input {
+        key: k,
+        ctrl: key.modifiers.contains(KeyModifiers::CONTROL),
+        alt: key.modifiers.contains(KeyModifiers::ALT),
+        shift: key.modifiers.contains(KeyModifiers::SHIFT),
     }
 }
 
@@ -140,32 +147,34 @@ impl FilteredBoardView {
 
 #[derive(Default)]
 pub struct SearchController {
-    token: SearchToken,
-    input: InputController,
+    textarea: TextArea<'static>,
 }
 
 impl SearchController {
     pub fn draw(&self, frame: &mut Frame) {
-        frame.set_cursor_position(Position::new(
-            1 + self.input.character_index as u16,
-            frame.area().height - 1,
-        ));
         let area = Rect::new(0, frame.area().height - 1, frame.area().width - 1, 1);
         frame.render_widget(Clear, area);
-        let widget = ratatui::widgets::Paragraph::new(format!("/{}", self.token.value.clone()))
-            .bg(Color::DarkGray);
-        frame.render_widget(widget, area);
+        let ratatui_textarea::DataCursor(_, col) = self.textarea.cursor();
+        frame.render_widget(
+            Paragraph::new(format!("/{}", self.textarea.lines().first().cloned().unwrap_or_default())),
+            area,
+        );
+        frame.set_cursor_position(Position::new(
+            1 + col as u16,
+            frame.area().height - 1,
+        ));
     }
 
     pub fn reflect(&self, board: &Board) -> FilteredBoardView {
         let mut board_view: Vec<Vec<(usize, usize)>> = Vec::new();
+        let search_text = self.textarea.lines().first().cloned().unwrap_or_default();
         for l in board.lists.iter() {
             let mut list_view: Vec<(usize, usize)> = Vec::new();
             let mut partial_index: usize = 0;
             for (index, i) in l.items.iter().enumerate() {
                 if i.text
                     .to_lowercase()
-                    .contains(&self.token.value.to_lowercase())
+                    .contains(&search_text.to_lowercase())
                 {
                     list_view.push((partial_index, index));
                     partial_index += 1;
@@ -177,12 +186,11 @@ impl SearchController {
     }
 
     pub fn input(&mut self, key: KeyEvent) -> String {
-        self.input.input(&mut self.token, key, 60);
-        self.token.value.clone()
+        self.textarea.input(crossterm_to_input(key));
+        self.textarea.lines().first().cloned().unwrap_or_default()
     }
 
     pub fn clear(&mut self) {
-        self.input.character_index = 0;
-        self.token.value = "".to_string();
+        self.textarea = TextArea::default();
     }
 }

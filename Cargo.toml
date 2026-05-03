@@ -10,9 +10,10 @@ license-file = "./LICENSE"
 readme = "./README.md"
 
 [dependencies]
-crossterm = "0.28.1"
+crossterm = "0.29"
 markdown = "=1.0.0-alpha.22"
-ratatui = "0.29.0"
+ratatui = "0.30"
+ratatui-textarea = "0.9"
 textwrap = "0.16.1"
 confy = "1.0.0"
 serde = "^1.0"

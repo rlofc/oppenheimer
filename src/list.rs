@@ -1,13 +1,15 @@
 use std::cell::RefCell;
 
-use crate::{
-    config,
-    input::{wrapping_presets, Editable},
-};
+use crate::config;
 use ratatui::{
     prelude::*,
     widgets::{ListItem, ListState},
 };
+
+pub fn wrapping_presets(o: textwrap::Options) -> textwrap::Options {
+    o.break_words(false)
+        .word_splitter(textwrap::WordSplitter::NoHyphenation)
+}
 
 #[derive(Clone, Default)]
 pub struct BoardItem {
@@ -27,13 +29,13 @@ impl BoardItem {
     pub fn toggle(&mut self) {
         self.done = !self.done;
     }
-    pub fn render(
-        &self,
+    pub fn styled_text(
+        &'_ self,
         index: usize,
         column_width: usize,
         is_dimmable: bool,
         styles: &config::Styles,
-    ) -> ListItem {
+    ) -> Text<'_> {
         let mut text = Text::default();
         let (s, o) = textwrap::unfill(&self.text);
         let wrapped_text = textwrap::wrap(&s, wrapping_presets(o.width(column_width - 1)));
@@ -82,25 +84,21 @@ impl BoardItem {
         }
         text.extend([""]);
 
-        ListItem::new(if index > 0 && is_dimmable {
+        if index > 0 && is_dimmable {
             text.dim()
         } else {
             text
-        })
+        }
     }
-}
 
-impl Editable for BoardItem {
-    fn editable_text(&self) -> &String {
-        &self.text
-    }
-    fn editable_text_mut(&mut self) -> &mut String {
-        &mut self.text
-    }
-    fn wrapped(&self, width: u16) -> String {
-        let (s, o) = textwrap::unfill(&self.text);
-        let wrapped_text = textwrap::wrap(&s, wrapping_presets(o.width(width as usize - 1)));
-        wrapped_text.join("\n")
+    pub fn render(
+        &'_ self,
+        index: usize,
+        column_width: usize,
+        is_dimmable: bool,
+        styles: &config::Styles,
+    ) -> ListItem<'_> {
+        ListItem::new(self.styled_text(index, column_width, is_dimmable, styles))
     }
 }
 
@@ -112,18 +110,6 @@ pub struct BoardList {
     pub selected_item_index: Option<usize>,
     pub width: u16,
     pub _color: Color,
-}
-
-impl Editable for BoardList {
-    fn editable_text(&self) -> &String {
-        &self.name
-    }
-    fn editable_text_mut(&mut self) -> &mut String {
-        &mut self.name
-    }
-    fn wrapped(&self, _width: u16) -> String {
-        self.name.clone()
-    }
 }
 
 impl BoardList {
@@ -173,6 +159,7 @@ impl BoardList {
         self.state.borrow_mut().select(None);
     }
 
+    #[allow(dead_code)]
     pub fn get_selected_item_text(&self) -> Option<&str> {
         if !self.items.is_empty() {
             if let Some(selected_item_index) = self.selected_item_index {

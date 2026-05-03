@@ -1,27 +1,26 @@
 use crate::{
     commands::*,
     config::{BoardConfig, Styles},
-    input::{wrapping_presets, InputAction},
     list::*,
-    InputController,
 };
 
-use crossterm::event::KeyEvent;
 use ratatui::{
+    Frame,
     layout::{Constraint, Layout, Rect},
     style::{Color, Style, Stylize},
     text::Line,
     widgets::{List, ListItem, ListState, Paragraph},
-    Frame,
 };
 
 #[derive(Clone, Default)]
 pub struct Board {
     pub lists: Vec<BoardList>,
     pub current_list: Option<usize>,
-    pub input_controller: InputController,
     pub filter: String,
     pub config: BoardConfig,
+    pub column_title_areas: Vec<Rect>,
+    pub column_item_areas: Vec<Rect>,
+    pub editing_item_index: Option<usize>,
 }
 
 impl Board {
@@ -69,7 +68,7 @@ impl Board {
         }
     }
 
-    fn render_items(&self, list: usize) -> Vec<ListItem> {
+    fn render_items(&'_ self, list: usize) -> Vec<ListItem<'_>> {
         let is_dimmable = {
             let dim_tailing_items = self.config.dim_tailing_items;
             let focused_list = self.current_list.unwrap_or(list + 1) == list;
@@ -78,7 +77,7 @@ impl Board {
                 .and_then(|l| l.selected_item_index)
                 .unwrap_or(usize::MAX);
 
-            let list_exception = true; //self.current_list().is_none_or(|l| !l.name.contains("IN"));
+            let list_exception = true;
 
             move |index: usize| {
                 !(focused_list && index == current_item || !dim_tailing_items || !list_exception)
@@ -86,10 +85,17 @@ impl Board {
         };
 
         let column_width = self.lists[list].width as usize;
+        let max_index = if Some(list) == self.current_list {
+            self.editing_item_index.unwrap_or(usize::MAX)
+        } else {
+            usize::MAX
+        };
+
         self.lists[list]
             .items
             .iter()
             .enumerate()
+            .filter(|(i, _)| *i <= max_index)
             .filter(|(_, i)| i.text.to_lowercase().contains(&self.filter.to_lowercase()))
             .map(|(index, i)| {
                 i.render(index, column_width, is_dimmable(index), &self.config.styles)
@@ -373,24 +379,6 @@ impl Board {
         None
     }
 
-    pub fn process_input_for_title(&mut self, key: KeyEvent) -> InputAction {
-        let width = self.lists[self.current_list.unwrap()].width;
-        self.input_controller
-            .input(&mut self.lists[self.current_list.unwrap()], key, width)
-    }
-
-    pub fn process_input_for_item(&mut self, key: KeyEvent) -> InputAction {
-        let width = self.lists[self.current_list.unwrap()].width;
-        let item = self.lists[self.current_list.unwrap()]
-            .selected_item_index
-            .unwrap();
-        self.input_controller.input(
-            &mut self.lists[self.current_list.unwrap()].items[item],
-            key,
-            width,
-        )
-    }
-
     pub fn current_raw_item_text(&self) -> &String {
         let item = self.lists[self.current_list.unwrap()]
             .selected_item_index
@@ -398,97 +386,106 @@ impl Board {
         &self.lists[self.current_list.unwrap()].items[item].text
     }
 
-    fn current_item_wrapped_text(&self, trailing: usize) -> String {
-        let column_width = self.lists[self.current_list.unwrap()].width;
-        let mut result = String::new();
-        if let Some(text) = self.current_list().unwrap().get_selected_item_text() {
-            let (s, o) = textwrap::unfill(text);
-            let wrapped_text =
-                textwrap::wrap(&s, wrapping_presets(o.width(column_width as usize - 1)));
-            result = wrapped_text.join("\n");
-
-            let mut last_width = wrapped_text.iter().last().unwrap().len();
-            let mut trailing = trailing;
-            while trailing > 0 {
-                let spaces_to_add = (column_width as usize - last_width).min(trailing);
-                result.push_str(&" ".repeat(spaces_to_add));
-                trailing -= spaces_to_add;
-                if trailing > 0 {
-                    result.push('\n');
-                    last_width = 0;
-                }
-            }
-        }
-        result
+    pub fn title_edit_rect(&self) -> Rect {
+        let list = self.current_list.unwrap();
+        let area = self
+            .column_title_areas
+            .get(list + 1)
+            .copied()
+            .unwrap_or_default();
+        Rect::new(area.x, area.y + 1, area.width, 1)
     }
 
-    pub fn cursor_position_in_list_title(&self) -> (u16, u16) {
-        let start_x: u16 = (0..self.current_list.unwrap())
-            .map(|j| self.lists[j].width + 2)
-            .sum();
+    pub fn item_edit_rect(&self, textarea: &ratatui_textarea::TextArea) -> Rect {
+        let list_idx = self.current_list.unwrap();
+        let list = &self.lists[list_idx];
+        let item_area = self
+            .column_item_areas
+            .get(list_idx + 1)
+            .copied()
+            .unwrap_or_default();
+        let column_width = list.width as usize;
 
-        let wrapped_text = &self.lists[self.current_list.unwrap()].name;
-        let (mut x, mut y) = (0, 2);
-
-        for c in wrapped_text
-            .chars()
-            .take(self.input_controller.character_index)
-        {
-            if c == '\n' {
-                y += 1;
-                x = 0;
-            } else {
-                x += 1;
-            }
-        }
-        (x as u16 + start_x, y as u16)
-    }
-
-    pub fn cursor_position_in_list_item(&self) -> (u16, u16) {
-        let list_state = &self.lists[self.current_list.unwrap()].state.borrow();
-        let column_width = self.lists[self.current_list.unwrap()].width as usize;
+        let list_state = &list.state.borrow();
         let first_item_index = list_state.offset();
-        let mut start_y = 0;
-        for j in first_item_index
-            ..self.lists[self.current_list.unwrap()]
-                .selected_item_index
-                .unwrap()
-        {
-            let text = &self.lists[self.current_list.unwrap()].items[j].text;
+        let selected = list.selected_item_index.unwrap();
+
+        let mut offset_y: u16 = 0;
+        for j in first_item_index..selected {
+            let text = &list.items[j].text;
             let (s, o) = textwrap::unfill(text);
-            let wrapped_text = textwrap::wrap(&s, wrapping_presets(o.width(column_width - 1)));
-            start_y += wrapped_text.len() + 1;
+            let wrapped_text = textwrap::wrap(
+                &s,
+                o.break_words(false)
+                    .word_splitter(textwrap::WordSplitter::NoHyphenation)
+                    .width(column_width - 1),
+            );
+            offset_y += wrapped_text.len() as u16 + 1;
         }
 
-        let start_x: u16 = self
-            .lists
-            .iter()
-            .take(self.current_list.unwrap())
-            .map(|list| list.width + 2)
-            .sum();
+        let text = textarea.lines().join("\n");
+        let (_, opts) = textwrap::unfill(&text);
+        let wrapped = textwrap::wrap(
+            &text,
+            opts.break_words(false)
+                .word_splitter(textwrap::WordSplitter::NoHyphenation)
+                .width(column_width - 1),
+        );
+        let height = wrapped.len().max(1) as u16;
 
-        let original = self.current_raw_item_text();
-        let missing = original.len() - original.trim_end().len();
-        let wrapped_text = self.current_item_wrapped_text(missing);
+        Rect::new(
+            item_area.x + 1,
+            item_area.y + offset_y,
+            column_width as u16 - 1,
+            height,
+        )
+    }
 
-        let mut x = 0;
-        let mut y = 0;
-        for (i, c) in wrapped_text.chars().enumerate() {
-            if i == self.input_controller.character_index {
-                break;
+    pub fn render_items_below_edit(&self, frame: &mut Frame, textarea_rect: Rect) {
+        let list_idx = self.current_list.unwrap();
+        let list = &self.lists[list_idx];
+        let item_area = self
+            .column_item_areas
+            .get(list_idx + 1)
+            .copied()
+            .unwrap_or_default();
+        let column_width = list.width as usize;
+        let styles = &self.config.styles;
+
+        let list_state = &list.state.borrow();
+        let first_item_index = list_state.offset();
+        let selected = list.selected_item_index.unwrap();
+
+        let dim_tailing_items = self.config.dim_tailing_items;
+        let focused_list = self.current_list.unwrap_or(list_idx + 1) == list_idx;
+        let current_item = self
+            .current_list()
+            .and_then(|l| l.selected_item_index)
+            .unwrap_or(usize::MAX);
+        let list_exception = true;
+
+        let is_dimmable = |index: usize| {
+            !(focused_list && index == current_item || !dim_tailing_items || !list_exception)
+        };
+
+        let mut cursor_y = textarea_rect.y + textarea_rect.height;
+
+        for j in (selected + 1)..list.items.len() {
+            if j < first_item_index {
+                continue;
             }
-            if c == '\n' {
-                y += 1;
-                x = 0;
-            } else {
-                x += 1;
+            let styled_text = list.items[j].styled_text(j, column_width, is_dimmable(j), styles);
+
+            for line in styled_text.lines.iter() {
+                if cursor_y >= item_area.y + item_area.height {
+                    return;
+                }
+                let paragraph = Paragraph::new(line.clone());
+                let rect = Rect::new(item_area.x, cursor_y, column_width as u16, 1);
+                frame.render_widget(paragraph, rect);
+                cursor_y += 1;
             }
         }
-        if x >= column_width - 1 {
-            x = 0;
-            y += 1;
-        }
-        (x as u16 + start_x + 1, y as u16 + start_y as u16)
     }
 
     pub fn draw(&mut self, frame: &mut Frame, rect: Rect) -> Rect {
@@ -516,6 +513,10 @@ impl Board {
 
         let [top, center] = horizontal_layout.areas(rect);
         let columns_top = vertical_layout.split(top);
+        let columns_center = vertical_layout.split(center);
+
+        self.column_title_areas = columns_top.to_vec();
+        self.column_item_areas = columns_center.to_vec();
 
         for (i, list) in self.lists.iter().enumerate() {
             let col = columns_top[i + 1];
@@ -534,23 +535,25 @@ impl Board {
             frame.render_widget(Paragraph::new(lines), col);
         }
 
-        let columns_center = vertical_layout.split(center);
         self.lists
             .iter_mut()
             .enumerate()
-            .for_each(|(i, list)| list.width = columns_center[i + 1].width);
+            .for_each(|(i, list)| list.width = self.column_item_areas[i + 1].width);
 
         for (i, list) in self.lists.iter().enumerate() {
             render_list(
                 frame,
-                columns_center[i + 1],
+                self.column_item_areas[i + 1],
                 &mut list.state.borrow_mut(),
                 self.render_items(i),
                 &self.config.styles,
             );
         }
 
-        *columns_center.get(1).unwrap_or(&columns_center[0])
+        *self
+            .column_item_areas
+            .get(1)
+            .unwrap_or(&self.column_item_areas[0])
     }
 }
 
@@ -560,11 +563,7 @@ trait ApplyIf: Sized {
 
 impl ApplyIf for Line<'_> {
     fn apply_if<F: FnOnce(Self) -> Self>(self, condition: bool, f: F) -> Self {
-        if condition {
-            f(self)
-        } else {
-            self
-        }
+        if condition { f(self) } else { self }
     }
 }
 
