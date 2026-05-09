@@ -1,4 +1,8 @@
 <p align="center">
+  <img src="https://raw.githubusercontent.com/rlofc/oppenheimer/master/oppenheimer.png" alt="Oppenheimer logo" width="256"/>
+</p>
+
+<p align="center">
   <a href="https://github.com/rlofc/oppenheimer/actions/workflows/ci.yml">
       <img src="https://github.com/rlofc/oppenheimer/actions/workflows/ci.yml/badge.svg?branch=master" alt="Github Actions CI Build Status"/>
   </a>
